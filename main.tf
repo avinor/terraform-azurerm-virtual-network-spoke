@@ -1,18 +1,44 @@
-provider "azurerm" {
-  alias           = "hub"
-  subscription_id = "${var.common_subscription_id}"
-}
-
 terraform {
   backend "azurerm" {}
+  required_version = ">= 0.12.0"
+  required_providers {
+    azurerm = ">= 1.28.0"
+  }
+}
+
+provider "azurerm" {
+  alias           = "hub"
+  subscription_id = local.hub_subscription_id
 }
 
 data "azurerm_client_config" "current" {}
 
 locals {
-  spoke_rg_name   = "networking-spoke-${var.name}-${var.location}-rg"
-  spoke_vnet_name = "${var.name}-spoke-vnet"
-  aks_subnets     = ["aks_blue", "aks_green"]
+  default_nsg_rule = {
+    direction                                  = "Inbound"
+    access                                     = "Allow"
+    protocol                                   = "Tcp"
+    description                                = null
+    source_port_range                          = null
+    source_port_ranges                         = null
+    destination_port_range                     = null
+    destination_port_ranges                    = null
+    source_address_prefix                      = null
+    source_address_prefixes                    = null
+    source_application_security_group_ids      = null
+    destination_address_prefix                 = null
+    destination_address_prefixes               = null
+    destination_application_security_group_ids = null
+  }
+
+  merged_nsg_rules = [for subnet in var.subnets : 
+    [for rule in subnet.security_rules : merge(local.default_nsg_rule, rule)]
+  ]
+
+  splitted_hub_vnet = split("/", var.hub_virtual_network_id)
+  hub_subscription_id = local.splitted_hub_vnet[2]
+  hub_vnet_rg_name = local.splitted_hub_vnet[4]
+  hub_vnet_name = local.splitted_hub_vnet[8]
 }
 
 #
@@ -40,35 +66,16 @@ resource "azurerm_virtual_network" "vnet" {
 # Spoke subnets
 #
 
-resource "azurerm_subnet" "aks" {
-  count                = "${length(local.aks_subnets)}"
-  name                 = "${element(local.aks_subnets, count.index)}"
-  resource_group_name  = "${azurerm_resource_group.vnet.name}"
-  virtual_network_name = "${azurerm_virtual_network.vnet.name}"
-  address_prefix       = "${cidrsubnet(var.address_space, 2, count.index)}"
+resource "azurerm_subnet" "vnet" {
+  count                = length(var.subnets)
+  name                 = var.subnets[count.index].name
+  resource_group_name  = azurerm_resource_group.vnet.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefix       = var.subnets[count.index].address_prefix
 
-  service_endpoints = [
-    "Microsoft.Storage",
-  ]
+  service_endpoints = var.subnets[count.index].service_endpoints
 
-  lifecycle {
-    # TODO Remove this when azurerm 2.0 provider is released
-    ignore_changes = [
-      "route_table_id",
-      "network_security_group_id",
-    ]
-  }
-}
-
-resource "azurerm_subnet" "mongo" {
-  name                 = "mongo"
-  resource_group_name  = "${azurerm_resource_group.vnet.name}"
-  virtual_network_name = "${azurerm_virtual_network.vnet.name}"
-  address_prefix       = "${cidrsubnet(var.address_space, 6, 48)}"
-
-  service_endpoints = [
-    "Microsoft.Storage",
-  ]
+  # TODO Add support for delegation. Some delegation doesnt support UDR
 
   lifecycle {
     # TODO Remove this when azurerm 2.0 provider is released
@@ -78,48 +85,18 @@ resource "azurerm_subnet" "mongo" {
     ]
   }
 }
-
-# TODO Look at this later. delegated subnets do not support route tables
-# resource "azurerm_subnet" "aci" {
-#   name                 = "aci"
-#   resource_group_name  = "${azurerm_resource_group.vnet.name}"
-#   virtual_network_name = "${azurerm_virtual_network.vnet.name}"
-#   address_prefix       = "${cidrsubnet(var.address_space, 6, 33)}"
-
-#   delegation {
-#     name = "aci-delegation"
-
-#     service_delegation {
-#       name    = "Microsoft.ContainerInstance/containerGroups"
-#       actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-#     }
-#   }
-
-#   lifecycle {
-#     # TODO Remove this when azurerm 2.0 provider is released
-#     ignore_changes = [ "route_table_id" ]
-#   }
-# }
 
 #
 # Storage account for flow logs
 #
 
-resource "random_string" "unique" {
-  length  = 6
-  special = false
-  upper   = false
-}
+module "storage" {
+  source  = "avinor/storage-account/azurerm"
+  version = "1.0.0"
 
-resource "azurerm_storage_account" "network" {
-  name                = "${format("spokenetwork%ssa", random_string.unique.result)}"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
-
-  location                  = "${azurerm_resource_group.vnet.location}"
-  account_kind              = "StorageV2"
-  account_tier              = "Standard"
-  account_replication_type  = "ZRS"
-  enable_https_traffic_only = true
+  name                = var.name
+  resource_group_name = azurerm_resource_group.vnet.name
+  location            = azurerm_resource_group.vnet.location
 
   # TODO Not yet supported to use service endpoints together with flow logs. Not a trusted Microsoft service
   # See https://github.com/MicrosoftDocs/azure-docs/issues/5989
@@ -128,103 +105,59 @@ resource "azurerm_storage_account" "network" {
   #   virtual_network_subnet_ids = ["${azurerm_subnet.firewall.id}"]
   # }
 
-  tags = "${var.tags}"
+  tags = var.tags
 }
 
 #
 # Route table
 #
 
-resource "azurerm_route_table" "public" {
-  name                = "${var.name}-public-rt"
-  location            = "${azurerm_resource_group.vnet.location}"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
+resource "azurerm_route_table" "outbound" {
+  name                = "${var.name}-outbound-rt"
+  location            = azurerm_resource_group.vnet.location
+  resource_group_name = azurerm_resource_group.vnet.name
 
-  tags = "${var.tags}"
+  tags = var.tags
 }
 
-resource "azurerm_route" "public_all" {
-  name                   = "all"
-  resource_group_name    = "${azurerm_resource_group.vnet.name}"
-  route_table_name       = "${azurerm_route_table.public.name}"
+resource "azurerm_route" "outbound" {
+  name                   = "outbound"
+  resource_group_name    = azurerm_resource_group.vnet.name
+  route_table_name       = azurerm_route_table.outbound.name
   address_prefix         = "0.0.0.0/0"
   next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = "${data.terraform_remote_state.hub.firewall_private_ip}"
+  next_hop_in_ip_address = var.firewall_ip
 }
 
 resource "azurerm_subnet_route_table_association" "aks" {
-  count          = "${length(local.aks_subnets)}"
-  subnet_id      = "${element(azurerm_subnet.aks.*.id, count.index)}"
-  route_table_id = "${azurerm_route_table.public.id}"
+  count          = length(var.subnets)
+  subnet_id      = azurerm_subnet.vnet[count.index].id
+  route_table_id = azurerm_route_table.outbound.id
 }
-
-resource "azurerm_subnet_route_table_association" "mongo" {
-  subnet_id      = "${azurerm_subnet.mongo.id}"
-  route_table_id = "${azurerm_route_table.public.id}"
-}
-
-# resource "azurerm_subnet_route_table_association" "aci" {
-#   subnet_id      = "${azurerm_subnet.aci.id}"
-#   route_table_id = "${azurerm_route_table.hub.id}"
-# }
 
 #
 # Network Security Groups
 #
 
-resource "azurerm_network_security_group" "aks" {
-  name                = "aks-nsg"
-  location            = "${azurerm_resource_group.vnet.location}"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
+resource "azurerm_network_security_group" "vnet" {
+  count = length(var.subnets)
+  name                = "${var.subnets[count.index].name}-nsg"
+  location            = azurerm_resource_group.vnet.location
+  resource_group_name = azurerm_resource_group.vnet.name
 
-  security_rule {
-    name                       = "allow-http-from-appgw"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "${data.azurerm_subnet.appgw.address_prefix}"
-    destination_address_prefix = "VirtualNetwork"
-  }
-
-  security_rule {
-    name                       = "allow-ssh-from-mgmt"
-    priority                   = 200
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "${data.azurerm_subnet.mgmt.address_prefix}"
-    destination_address_prefix = "VirtualNetwork"
-  }
-
-  security_rule {
-    name                       = "allow-load-balancer"
-    priority                   = 300
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "AzureLoadBalancer"
-    destination_address_prefix = "*"
-  }
-
-  tags = "${var.tags}"
+  tags = var.tags
 
   # TODO Does not exist as a resource...yet
   provisioner "local-exec" {
-    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg aks-nsg --storage-account ${azurerm_storage_account.network.id} --traffic-analytics true --workspace ${data.terraform_remote_state.setup.log_resource_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
+    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${var.subnets[count.index].name}-nsg --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
   }
 }
 
-resource "azurerm_monitor_diagnostic_setting" "aks" {
-  name                       = "aks-log-analytics"
-  target_resource_id         = "${azurerm_network_security_group.aks.id}"
-  log_analytics_workspace_id = "${data.terraform_remote_state.setup.log_resource_id}"
+resource "azurerm_monitor_diagnostic_setting" "vnet" {
+  count = var.log_analytics_workspace_id != null ? length(var.subnets) : 0
+  name                       = "${var.subnets[count.index].name}-log-analytics"
+  target_resource_id         = azurerm_network_security_group.vnet[count.index].id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
 
   log {
     category = "NetworkSecurityGroupEvent"
@@ -243,98 +176,10 @@ resource "azurerm_monitor_diagnostic_setting" "aks" {
   }
 }
 
-resource "azurerm_subnet_network_security_group_association" "aks" {
-  count                     = "${length(local.aks_subnets)}"
-  subnet_id                 = "${element(azurerm_subnet.aks.*.id, count.index)}"
-  network_security_group_id = "${azurerm_network_security_group.aks.id}"
-}
-
-resource "azurerm_network_security_group" "mongo" {
-  name                = "mongo-nsg"
-  location            = "${azurerm_resource_group.vnet.location}"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
-
-  security_rule {
-    name                       = "allow-mongo-from-vnet"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "27017"
-    source_address_prefix      = "VirtualNetwork"
-    destination_address_prefix = "VirtualNetwork"
-  }
-
-  security_rule {
-    name                       = "allow-ssh-from-mgmt"
-    priority                   = 200
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "${data.azurerm_subnet.mgmt.address_prefix}"
-    destination_address_prefix = "VirtualNetwork"
-  }
-
-  security_rule {
-    name                       = "allow-load-balancer"
-    priority                   = 300
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "AzureLoadBalancer"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "deny-vnet"
-    priority                   = 400
-    direction                  = "Inbound"
-    access                     = "Deny"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_address_prefix = "VirtualNetwork"
-  }
-
-  tags = "${var.tags}"
-
-  # TODO Does not exist as a resource...yet
-  provisioner "local-exec" {
-    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg mongo-nsg --storage-account ${azurerm_storage_account.network.id} --traffic-analytics true --workspace ${data.terraform_remote_state.setup.log_resource_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
-  }
-}
-
-resource "azurerm_monitor_diagnostic_setting" "mongo" {
-  name                       = "mongo-log-analytics"
-  target_resource_id         = "${azurerm_network_security_group.mongo.id}"
-  log_analytics_workspace_id = "${data.terraform_remote_state.setup.log_resource_id}"
-
-  log {
-    category = "NetworkSecurityGroupEvent"
-
-    retention_policy {
-      enabled = false
-    }
-  }
-
-  log {
-    category = "NetworkSecurityGroupRuleCounter"
-
-    retention_policy {
-      enabled = false
-    }
-  }
-}
-
-resource "azurerm_subnet_network_security_group_association" "mongo" {
-  subnet_id                 = "${azurerm_subnet.mongo.id}"
-  network_security_group_id = "${azurerm_network_security_group.mongo.id}"
+resource "azurerm_subnet_network_security_group_association" "vnet" {
+  count                     = length(var.subnets)
+  subnet_id                 = azurerm_subnet.vnet[count.index].id
+  network_security_group_id = azurerm_network_security_group.vnet[count.index].id
 }
 
 #
@@ -343,13 +188,13 @@ resource "azurerm_subnet_network_security_group_association" "mongo" {
 
 resource "azurerm_virtual_network_peering" "spoke-to-hub" {
   name                         = "peering-to-hub"
-  resource_group_name          = "${azurerm_resource_group.vnet.name}"
-  virtual_network_name         = "${local.spoke_vnet_name}"
-  remote_virtual_network_id    = "${data.terraform_remote_state.hub.vnet_id}"
+  resource_group_name          = azurerm_resource_group.vnet.name
+  virtual_network_name         = azurerm_virtual_network.vnet.name
+  remote_virtual_network_id    = var.hub_virtual_network_id
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
   allow_gateway_transit        = false
-  use_remote_gateways          = "${var.use_remote_gateway}"
+  use_remote_gateways          = var.use_remote_gateway
 
   depends_on = ["azurerm_virtual_network.vnet"]
 }
@@ -357,9 +202,9 @@ resource "azurerm_virtual_network_peering" "spoke-to-hub" {
 resource "azurerm_virtual_network_peering" "hub-to-spoke" {
   provider                     = "azurerm.hub"
   name                         = "peering-to-spoke-${var.name}"
-  resource_group_name          = "${data.terraform_remote_state.hub.vnet_rg}"
-  virtual_network_name         = "${data.terraform_remote_state.hub.vnet_name}"
-  remote_virtual_network_id    = "${azurerm_virtual_network.vnet.id}"
+  resource_group_name          = local.hub_vnet_rg_name
+  virtual_network_name         = local.hub_vnet_name
+  remote_virtual_network_id    = azurerm_virtual_network.vnet.id
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
   allow_gateway_transit        = true
