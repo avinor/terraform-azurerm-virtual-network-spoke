@@ -20,20 +20,20 @@ locals {
 #
 
 resource "azurerm_resource_group" "vnet" {
-  name     = "${local.spoke_rg_name}"
-  location = "${var.location}"
+  name     = var.resource_group_name
+  location = var.location
 
-  tags = "${var.tags}"
+  tags = var.tags
 }
 
 resource "azurerm_virtual_network" "vnet" {
-  name                = "${local.spoke_vnet_name}"
-  location            = "${azurerm_resource_group.vnet.location}"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
+  name                = "${var.name}-vnet"
+  location            = azurerm_resource_group.vnet.location
+  resource_group_name = azurerm_resource_group.vnet.name
 
-  address_space = ["${var.address_space}"]
+  address_space = [var.address_space]
 
-  tags = "${var.tags}"
+  tags = var.tags
 }
 
 #

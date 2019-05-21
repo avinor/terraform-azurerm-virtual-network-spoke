@@ -2,8 +2,8 @@ variable "name" {
   description = "Name of the spoke virtual network."
 }
 
-variable "environment" {
-  description = "Environment to create (prod, test, dev)"
+variable "resource_group_name" {
+  description = "Name of resource group to deploy resources in."
 }
 
 variable "location" {
