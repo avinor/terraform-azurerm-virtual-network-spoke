@@ -31,18 +31,18 @@ locals {
     destination_application_security_group_ids = null
   }
 
-  flatten_nsg_rules = flatten([for idx, subnet in var.subnets : 
+  flatten_nsg_rules = flatten([for idx, subnet in var.subnets :
     [for ridx, r in subnet.security_rules : {
-      subnet = idx
+      subnet   = idx
       priority = 100 + 100 * ridx
-      rule = merge(local.default_nsg_rule, r)
+      rule     = merge(local.default_nsg_rule, r)
     }]
   ])
 
-  splitted_hub_vnet = split("/", var.hub_virtual_network_id)
+  splitted_hub_vnet   = split("/", var.hub_virtual_network_id)
   hub_subscription_id = local.splitted_hub_vnet[2]
-  hub_vnet_rg_name = local.splitted_hub_vnet[4]
-  hub_vnet_name = local.splitted_hub_vnet[8]
+  hub_vnet_rg_name    = local.splitted_hub_vnet[4]
+  hub_vnet_name       = local.splitted_hub_vnet[8]
 }
 
 #
@@ -144,7 +144,7 @@ resource "azurerm_subnet_route_table_association" "aks" {
 #
 
 resource "azurerm_network_security_group" "vnet" {
-  count = length(var.subnets)
+  count               = length(var.subnets)
   name                = "${var.subnets[count.index].name}-nsg"
   location            = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
@@ -181,7 +181,7 @@ resource "azurerm_network_security_rule" "vnet" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "vnet" {
-  count = var.log_analytics_workspace_id != null ? length(var.subnets) : 0
+  count                      = var.log_analytics_workspace_id != null ? length(var.subnets) : 0
   name                       = "${var.subnets[count.index].name}-log-analytics"
   target_resource_id         = azurerm_network_security_group.vnet[count.index].id
   log_analytics_workspace_id = var.log_analytics_workspace_id

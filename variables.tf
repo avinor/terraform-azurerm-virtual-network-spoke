@@ -25,7 +25,7 @@ variable "hub_virtual_network_id" {
 
 variable "subnets" {
   description = "Subnets to create and their configuration. All values are required, set empty to ignore."
-  type = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any) }))
+  type        = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any) }))
 }
 
 variable "firewall_ip" {
@@ -34,7 +34,7 @@ variable "firewall_ip" {
 
 variable "use_remote_gateway" {
   description = "Use remote gateway when peering hub to spoke."
-  type = bool
+  type        = bool
   default     = true
 }
 
