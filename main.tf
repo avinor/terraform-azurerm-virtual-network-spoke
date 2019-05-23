@@ -31,9 +31,13 @@ locals {
     destination_application_security_group_ids = null
   }
 
-  merged_nsg_rules = [for subnet in var.subnets : 
-    [for rule in subnet.security_rules : merge(local.default_nsg_rule, rule)]
-  ]
+  flatten_nsg_rules = flatten([for idx, subnet in var.subnets : 
+    [for ridx, r in subnet.security_rules : {
+      subnet = idx
+      priority = 100 + 100 * ridx
+      rule = merge(local.default_nsg_rule, r)
+    }]
+  ])
 
   splitted_hub_vnet = split("/", var.hub_virtual_network_id)
   hub_subscription_id = local.splitted_hub_vnet[2]
@@ -151,6 +155,29 @@ resource "azurerm_network_security_group" "vnet" {
   provisioner "local-exec" {
     command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${var.subnets[count.index].name}-nsg --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
   }
+}
+
+resource "azurerm_network_security_rule" "vnet" {
+  count                       = length(local.flatten_nsg_rules)
+  resource_group_name         = azurerm_resource_group.vnet.name
+  network_security_group_name = azurerm_network_security_group.vnet[local.flatten_nsg_rules[count.index].subnet].name
+  priority                    = local.flatten_nsg_rules[count.index].priority
+
+  name                                       = local.flatten_nsg_rules[count.index].rule.name
+  direction                                  = local.flatten_nsg_rules[count.index].rule.direction
+  access                                     = local.flatten_nsg_rules[count.index].rule.access
+  protocol                                   = local.flatten_nsg_rules[count.index].rule.protocol
+  description                                = local.flatten_nsg_rules[count.index].rule.description
+  source_port_range                          = local.flatten_nsg_rules[count.index].rule.source_port_range
+  source_port_ranges                         = local.flatten_nsg_rules[count.index].rule.source_port_ranges
+  destination_port_range                     = local.flatten_nsg_rules[count.index].rule.destination_port_range
+  destination_port_ranges                    = local.flatten_nsg_rules[count.index].rule.destination_port_ranges
+  source_address_prefix                      = local.flatten_nsg_rules[count.index].rule.source_address_prefix
+  source_address_prefixes                    = local.flatten_nsg_rules[count.index].rule.source_address_prefixes
+  source_application_security_group_ids      = local.flatten_nsg_rules[count.index].rule.source_application_security_group_ids
+  destination_address_prefix                 = local.flatten_nsg_rules[count.index].rule.destination_address_prefix
+  destination_address_prefixes               = local.flatten_nsg_rules[count.index].rule.destination_address_prefixes
+  destination_application_security_group_ids = local.flatten_nsg_rules[count.index].rule.destination_application_security_group_ids
 }
 
 resource "azurerm_monitor_diagnostic_setting" "vnet" {
