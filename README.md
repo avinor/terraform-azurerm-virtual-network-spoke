@@ -1,6 +1,6 @@
 # Virtual network spoke
 
-Terraform module to create a spoke virtual network according to Microsoft Best Practice of deploying Hub-Spoke architecture. This requires that the hub network has already been deployed and that the service principal / user running the terraform module have access to hub subscription, see [permissions required on Microsoft site](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-manage-peering#permissions).
+Terraform module to create a spoke virtual network according to Microsoft Best Practice of deploying Hub-Spoke architecture. This requires that the hub network has already been deployed and that the service principal have access, see Setup for more details.
 
 ## Recommendation
 
@@ -13,6 +13,12 @@ Firewall subnet has all service endpoints defined so traffic will still go to Az
 Currently spoke subnets do not support delegation as not all delegation resources support UDR, for instance containers. Since all subnets have an UDR for routing traffic through the firewall in hub this is a requirement for spoke.
 
 It is not an option to turn off UDR as that allows any subnet to create public ips and have full access out.
+
+## Setup
+
+Since spoke requires access to hub network to initiate peering it requires access to hub virtual network. Service principal that deploys spoke therefore needs a custom role, or Network Contributor role on hub virtual network. See [Microsoft documentation](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-manage-peering#permissions) for required setup.
+
+If Log Analytics workspace is created in another subscription it is required that service principal has Log Analytics Contributor role on workspace, or a custom role allowing it to connect resources to workspace.
 
 ## Usage
 
