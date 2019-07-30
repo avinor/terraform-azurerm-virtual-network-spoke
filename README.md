@@ -1,6 +1,6 @@
 # Virtual network spoke
 
-Terraform module to create a spoke virtual network according to Microsoft Best Practice of deploying Hub-Spoke architecture. This requires that the hub network has already been deployed and that the service principal have access, see Setup for more details.
+Terraform module to create a spoke virtual network according to Microsoft Best Practice of deploying Hub-Spoke architecture. This requires that the hub network has already been deployed and that the service principal have access, see [Setup](#setup) for more details.
 
 ## Recommendation
 
@@ -24,10 +24,15 @@ If Log Analytics workspace is created in another subscription it is required tha
 
 Example below only creates a single subnet, but it can create as many as required. Each subnet has its own service endpoint and security rules (NSG) defined. There are no default security rules so if its required to have a deny_all rule make sure to add it last in the list.
 
-```terraform
-module "spoke" {
-    source = "avinor/virtual-network-spoke/azurerm"
+Example uses [tau](https://github.com/avinor/tau).
 
+```terraform
+module {
+    source = "avinor/virtual-network-spoke/azurerm"
+    version = "1.0.0"
+}
+
+inputs {
     name = "spoke"
     resource_group_name = "networking-spoke-rg"
     location = "westeurope"
@@ -45,6 +50,10 @@ module "spoke" {
     ]
 }
 ```
+
+## Network watcher
+
+If defining the input variable `netwatcher` it will create a Network Watcher resource. Since Azure uses a specific naming standard on network watchers it tries to conform to that. It will create a resource group NetworkWatcherRG in location specific in `netwatcher` input variable.
 
 ## Input
 

@@ -25,7 +25,7 @@ variable "hub_virtual_network_id" {
 
 variable "subnets" {
   description = "Subnets to create and their configuration. All values are required, set empty to ignore."
-  type        = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any) }))
+  type        = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any), routes = list(object({ name = string, address_prefix = string, next_hop_type = string })) }))
 }
 
 variable "firewall_ip" {
@@ -36,6 +36,12 @@ variable "use_remote_gateway" {
   description = "Use remote gateway when peering hub to spoke."
   type        = bool
   default     = true
+}
+
+variable "netwatcher" {
+  description = "Properties for creating network watcher. If set it will create Network Watcher resource using standard naming standard."
+  type        = object({ resource_group_location = string })
+  default     = null
 }
 
 variable "tags" {

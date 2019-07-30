@@ -1,5 +1,4 @@
 terraform {
-  backend "azurerm" {}
   required_version = ">= 0.12.0"
   required_providers {
     azurerm = ">= 1.29.0"
@@ -39,10 +38,39 @@ locals {
     }]
   ])
 
+  flatten_routes = flatten([for idx, subnet in var.subnets :
+    [for r in subnet.routes : {
+      subnet = idx
+      route  = r
+    }]
+  ])
+
   splitted_hub_vnet   = split("/", var.hub_virtual_network_id)
   hub_subscription_id = local.splitted_hub_vnet[2]
   hub_vnet_rg_name    = local.splitted_hub_vnet[4]
   hub_vnet_name       = local.splitted_hub_vnet[8]
+}
+
+#
+# Network watcher
+# Following Azure naming standard to not create twice
+#
+
+resource "azurerm_resource_group" "netwatcher" {
+  count    = var.netwatcher != null ? 1 : 0
+  name     = "NetworkWatcherRG"
+  location = var.netwatcher.resource_group_location
+
+  tags = var.tags
+}
+
+resource "azurerm_network_watcher" "netwatcher" {
+  count               = var.netwatcher != null ? 1 : 0
+  name                = "NetworkWatcher_${var.location}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.netwatcher.0.name
+
+  tags = var.tags
 }
 
 #
@@ -116,27 +144,38 @@ module "storage" {
 # Route table
 #
 
-resource "azurerm_route_table" "outbound" {
-  name                = "${var.name}-outbound-rt"
+resource "azurerm_route_table" "vnet" {
+  count               = length(var.subnets)
+  name                = "${var.subnets[count.index].name}-rt"
   location            = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
 
   tags = var.tags
 }
 
+resource "azurerm_route" "vnet" {
+  count               = length(local.flatten_routes)
+  name                = local.flatten_routes[count.index].route.name
+  resource_group_name = azurerm_resource_group.vnet.name
+  route_table_name    = azurerm_route_table.vnet[local.flatten_routes[count.index].subnet].name
+  address_prefix      = local.flatten_routes[count.index].route.address_prefix
+  next_hop_type       = local.flatten_routes[count.index].route.next_hop_type
+}
+
 resource "azurerm_route" "outbound" {
+  count                  = length(var.subnets)
   name                   = "outbound"
   resource_group_name    = azurerm_resource_group.vnet.name
-  route_table_name       = azurerm_route_table.outbound.name
+  route_table_name       = azurerm_route_table.vnet[count.index].name
   address_prefix         = "0.0.0.0/0"
   next_hop_type          = "VirtualAppliance"
   next_hop_in_ip_address = var.firewall_ip
 }
 
-resource "azurerm_subnet_route_table_association" "aks" {
+resource "azurerm_subnet_route_table_association" "vnet" {
   count          = length(var.subnets)
   subnet_id      = azurerm_subnet.vnet[count.index].id
-  route_table_id = azurerm_route_table.outbound.id
+  route_table_id = azurerm_route_table.vnet[count.index].id
 }
 
 #
@@ -150,11 +189,17 @@ resource "azurerm_network_security_group" "vnet" {
   resource_group_name = azurerm_resource_group.vnet.name
 
   tags = var.tags
+}
 
-  # TODO Does not exist as a resource...yet
+resource "null_resource" "vnet_logs" {
+  count = var.log_analytics_workspace_id != null ? length(var.subnets) : 0
+
+  # TODO Use new resource when exists
   provisioner "local-exec" {
-    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${var.subnets[count.index].name}-nsg --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
+    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${azurerm_network_security_group.vnet[count.index].name} --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
   }
+
+  depends_on = ["azurerm_network_security_group.vnet"]
 }
 
 resource "azurerm_network_security_rule" "vnet" {
