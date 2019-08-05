@@ -250,7 +250,7 @@ resource "azurerm_network_security_rule" "vnet" {
   destination_application_security_group_ids = local.flatten_nsg_rules[count.index].rule.destination_application_security_group_ids
 }
 
-resource "azurerm_monitor_diagnostic_setting" "vnet" {
+resource "azurerm_monitor_diagnostic_setting" "nsg" {
   count                      = var.log_analytics_workspace_id != null ? length(var.subnets) : 0
   name                       = "${var.subnets[count.index].name}-log-analytics"
   target_resource_id         = azurerm_network_security_group.vnet[count.index].id
