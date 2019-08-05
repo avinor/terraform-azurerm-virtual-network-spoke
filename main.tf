@@ -94,6 +94,29 @@ resource "azurerm_virtual_network" "vnet" {
   tags = var.tags
 }
 
+resource "azurerm_monitor_diagnostic_setting" "vnet" {
+  count                      = var.log_analytics_workspace_id != null ? 1 : 0
+  name                       = "vnet-analytics"
+  target_resource_id         = azurerm_virtual_network.vnet.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  log {
+    category = "VMProtectionAlerts"
+
+    retention_policy {
+      enabled = false
+    }
+  }
+
+  metric {
+    category = "AllMetrics"
+
+    retention_policy {
+      enabled = false
+    }
+  }
+}
+
 #
 # Spoke subnets
 #
