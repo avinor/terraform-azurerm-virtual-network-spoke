@@ -25,11 +25,7 @@ variable "hub_virtual_network_id" {
 
 variable "subnets" {
   description = "Subnets to create and their configuration. All values are required, set empty to ignore."
-  type        = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any), routes = list(object({ name = string, address_prefix = string, next_hop_type = string })) }))
-}
-
-variable "firewall_ip" {
-  description = "IP of firewall to route all outgoing traffic through."
+  type        = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any), routes = list(object({ name = string, address_prefix = string, next_hop_type = string, next_hop_in_ip_address = string })) }))
 }
 
 variable "use_remote_gateway" {

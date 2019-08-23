@@ -1,7 +1,7 @@
 terraform {
   required_version = ">= 0.12.0"
   required_providers {
-    azurerm = ">= 1.29.0"
+    azurerm = ">= 1.33.0"
   }
 }
 
@@ -147,7 +147,7 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "1.2.0"
+  version = "1.4.0"
 
   name                = var.name
   resource_group_name = azurerm_resource_group.vnet.name
@@ -179,22 +179,13 @@ resource "azurerm_route_table" "vnet" {
 }
 
 resource "azurerm_route" "vnet" {
-  count               = length(local.flatten_routes)
-  name                = local.flatten_routes[count.index].route.name
-  resource_group_name = azurerm_resource_group.vnet.name
-  route_table_name    = azurerm_route_table.vnet[local.flatten_routes[count.index].subnet].name
-  address_prefix      = local.flatten_routes[count.index].route.address_prefix
-  next_hop_type       = local.flatten_routes[count.index].route.next_hop_type
-}
-
-resource "azurerm_route" "outbound" {
-  count                  = length(var.subnets)
-  name                   = "outbound"
+  count                  = length(local.flatten_routes)
+  name                   = local.flatten_routes[count.index].route.name
   resource_group_name    = azurerm_resource_group.vnet.name
-  route_table_name       = azurerm_route_table.vnet[count.index].name
-  address_prefix         = "0.0.0.0/0"
-  next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = var.firewall_ip
+  route_table_name       = azurerm_route_table.vnet[local.flatten_routes[count.index].subnet].name
+  address_prefix         = local.flatten_routes[count.index].route.address_prefix
+  next_hop_type          = local.flatten_routes[count.index].route.next_hop_type
+  next_hop_in_ip_address = local.flatten_routes[count.index].route.next_hop_in_ip_address
 }
 
 resource "azurerm_subnet_route_table_association" "vnet" {
