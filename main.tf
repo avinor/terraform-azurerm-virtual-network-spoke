@@ -45,6 +45,11 @@ locals {
     }]
   ])
 
+  defined_routes = [for idx, subnet in var.subnets : {
+    idx    = idx
+    subnet = subnet
+  } if length(subnet.routes) > 0]
+
   splitted_hub_vnet   = split("/", var.hub_virtual_network_id)
   hub_subscription_id = local.splitted_hub_vnet[2]
   hub_vnet_rg_name    = local.splitted_hub_vnet[4]
@@ -170,8 +175,8 @@ module "storage" {
 #
 
 resource "azurerm_route_table" "vnet" {
-  count               = length(var.subnets)
-  name                = "${var.subnets[count.index].name}-rt"
+  count               = length(local.defined_routes)
+  name                = "${local.defined_routes[count.index].subnet.name}-rt"
   location            = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
 
@@ -189,8 +194,8 @@ resource "azurerm_route" "vnet" {
 }
 
 resource "azurerm_subnet_route_table_association" "vnet" {
-  count          = length(var.subnets)
-  subnet_id      = azurerm_subnet.vnet[count.index].id
+  count          = length(local.defined_routes)
+  subnet_id      = azurerm_subnet.vnet[local.defined_routes[count.index].idx].id
   route_table_id = azurerm_route_table.vnet[count.index].id
 }
 
