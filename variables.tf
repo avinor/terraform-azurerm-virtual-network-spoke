@@ -12,7 +12,7 @@ variable "location" {
 
 variable "address_space" {
   description = "The address space that is used the virtual network."
-  type = list(string)
+  type        = list(string)
 }
 
 variable "log_analytics_workspace_id" {
