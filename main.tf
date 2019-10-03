@@ -128,7 +128,7 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
 
 resource "azurerm_private_dns_zone_virtual_network_link" "main" {
   count                 = var.private_dns_link != null ? 1 : 0
-  name                  = "${var.name}-link"
+  name                  = "${var.name}-link-${random_string.hub.result}"
   resource_group_name   = var.private_dns_link.resource_group_name
   private_dns_zone_name = var.private_dns_link.zone_name
   virtual_network_id    = azurerm_virtual_network.vnet.id
