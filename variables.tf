@@ -12,7 +12,7 @@ variable "location" {
 
 variable "address_space" {
   description = "The address space that is used the virtual network."
-  type = list(string)
+  type        = list(string)
 }
 
 variable "log_analytics_workspace_id" {
@@ -33,6 +33,12 @@ variable "use_remote_gateway" {
   description = "Use remote gateway when peering hub to spoke."
   type        = bool
   default     = true
+}
+
+variable "private_dns_link" {
+  description = "Private dns link for spoke network."
+  type        = object({ resource_group_name = string, zone_name = string })
+  default     = null
 }
 
 variable "netwatcher" {

@@ -123,6 +123,21 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
 }
 
 #
+# Private DNS link
+#
+
+resource "azurerm_private_dns_zone_virtual_network_link" "main" {
+  count                 = var.private_dns_link != null ? 1 : 0
+  name                  = "${var.name}-link"
+  resource_group_name   = var.private_dns_link.resource_group_name
+  private_dns_zone_name = var.private_dns_link.zone_name
+  virtual_network_id    = var.hub_virtual_network_id
+  registration_enabled  = true
+
+  tags = var.tags
+}
+
+#
 # Spoke subnets
 #
 
