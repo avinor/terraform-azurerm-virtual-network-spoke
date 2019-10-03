@@ -131,7 +131,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "main" {
   name                  = "${var.name}-link"
   resource_group_name   = var.private_dns_link.resource_group_name
   private_dns_zone_name = var.private_dns_link.zone_name
-  virtual_network_id    = var.hub_virtual_network_id
+  virtual_network_id    = azurerm_virtual_network.vnet.id
   registration_enabled  = true
 
   tags = var.tags
