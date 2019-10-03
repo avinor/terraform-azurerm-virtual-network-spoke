@@ -67,3 +67,7 @@ By default `use_remote_gateway` is set to true but this requires that the hub ha
 | address_prefix    | Address prefix for subnet
 | service_endpoints | List of service endpoints to activate.
 | security_rules    | Complex object that supports all properties of `azurerm_network_security_rule`. No need to define priority.
+
+## Private DNS
+
+To link the spoke with a Private DNS (preferrably created by the hub module) set the input variable `private_dns_link`. It requires the resource group name of private dns and zone name to link. It will always set automatic registration to true.
