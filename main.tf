@@ -307,9 +307,15 @@ resource "azurerm_virtual_network_peering" "spoke-to-hub" {
   depends_on = ["azurerm_virtual_network.vnet"]
 }
 
+resource "random_string" "hub" {
+  length  = 6
+  special = false
+  upper   = false
+}
+
 resource "azurerm_virtual_network_peering" "hub-to-spoke" {
   provider                     = "azurerm.hub"
-  name                         = "peering-to-spoke-${var.name}"
+  name                         = "peering-to-spoke-${var.name}-${random_string.hub.result}"
   resource_group_name          = local.hub_vnet_rg_name
   virtual_network_name         = local.hub_vnet_name
   remote_virtual_network_id    = azurerm_virtual_network.vnet.id
