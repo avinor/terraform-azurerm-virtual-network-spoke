@@ -123,21 +123,6 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
 }
 
 #
-# Private DNS link
-#
-
-resource "azurerm_private_dns_zone_virtual_network_link" "main" {
-  count                 = var.private_dns_link != null ? 1 : 0
-  name                  = "${var.name}-link-${random_string.hub.result}"
-  resource_group_name   = var.private_dns_link.resource_group_name
-  private_dns_zone_name = var.private_dns_link.zone_name
-  virtual_network_id    = azurerm_virtual_network.vnet.id
-  registration_enabled  = true
-
-  tags = var.tags
-}
-
-#
 # Spoke subnets
 #
 
@@ -288,6 +273,22 @@ resource "azurerm_subnet_network_security_group_association" "vnet" {
   count                     = length(var.subnets)
   subnet_id                 = azurerm_subnet.vnet[count.index].id
   network_security_group_id = azurerm_network_security_group.vnet[count.index].id
+}
+
+#
+# Private DNS link
+#
+
+resource "azurerm_private_dns_zone_virtual_network_link" "main" {
+  provider              = "azurerm.hub"
+  count                 = var.private_dns_link != null ? 1 : 0
+  name                  = "${var.name}-link-${random_string.hub.result}"
+  resource_group_name   = var.private_dns_link.resource_group_name
+  private_dns_zone_name = var.private_dns_link.zone_name
+  virtual_network_id    = azurerm_virtual_network.vnet.id
+  registration_enabled  = true
+
+  tags = var.tags
 }
 
 #
