@@ -253,11 +253,11 @@ resource "azurerm_network_security_group" "vnet" {
 }
 
 resource "null_resource" "vnet_logs" {
-  count = var.log_analytics_workspace_id != null ? length(var.subnets) : 0
+  for_each = var.netwatcher != null ? local.subnets_map : {}
 
   # TODO Use new resource when exists
   provisioner "local-exec" {
-    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${azurerm_network_security_group.vnet[count.index].name} --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
+    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${azurerm_network_security_group.vnet[each.key].name} --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.netwatcher.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
   }
 
   depends_on = ["azurerm_network_security_group.vnet"]

@@ -48,7 +48,7 @@ variable "private_dns_link" {
 
 variable "netwatcher" {
   description = "Properties for creating network watcher. If set it will create Network Watcher resource using standard naming standard."
-  type        = object({ resource_group_location = string })
+  type        = object({ resource_group_location = string, log_analytics_workspace_id = string })
   default     = null
 }
 
