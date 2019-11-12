@@ -54,6 +54,38 @@ locals {
   hub_subscription_id = local.splitted_hub_vnet[2]
   hub_vnet_rg_name    = local.splitted_hub_vnet[4]
   hub_vnet_name       = local.splitted_hub_vnet[8]
+
+  diag_vnet_logs = [
+    "VMProtectionAlerts",
+  ]
+  diag_vnet_metrics = [
+    "AllMetrics",
+  ]
+  diag_nsg_logs = [
+    "NetworkSecurityGroupEvent",
+    "NetworkSecurityGroupRuleCounter",
+  ]
+
+  diag_all_logs = setunion(
+    local.diag_vnet_logs,
+  local.diag_nsg_logs)
+  diag_all_metrics = setunion(
+  local.diag_vnet_metrics)
+
+  diag_resource_list = var.diagnostics != null ? split("/", var.diagnostics.destination) : []
+  parsed_diag = var.diagnostics != null ? {
+    log_analytics_id   = contains(local.diag_resource_list, "microsoft.operationalinsights") ? var.diagnostics.destination : null
+    storage_account_id = contains(local.diag_resource_list, "Microsoft.Storage") ? var.diagnostics.destination : null
+    event_hub_auth_id  = contains(local.diag_resource_list, "Microsoft.EventHub") ? var.diagnostics.destination : null
+    metric             = contains(var.diagnostics.metrics, "all") ? local.diag_all_metrics : var.diagnostics.metrics
+    log                = contains(var.diagnostics.logs, "all") ? local.diag_all_logs : var.diagnostics.logs
+    } : {
+    log_analytics_id   = null
+    storage_account_id = null
+    event_hub_auth_id  = null
+    metric             = []
+    log                = []
+}
 }
 
 #
@@ -100,26 +132,35 @@ resource "azurerm_virtual_network" "vnet" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "vnet" {
-  count                      = var.log_analytics_workspace_id != null ? 1 : 0
-  name                       = "vnet-analytics"
-  target_resource_id         = azurerm_virtual_network.vnet.id
-  log_analytics_workspace_id = var.log_analytics_workspace_id
+  count                          = var.diagnostics != null ? 1 : 0
+  name                           = "vnet-diag"
+  target_resource_id             = azurerm_virtual_network.vnet.id
+  log_analytics_workspace_id     = local.parsed_diag.log_analytics_id
+  eventhub_authorization_rule_id = local.parsed_diag.event_hub_auth_id
+  eventhub_name                  = local.parsed_diag.event_hub_auth_id != null ? var.diagnostics.eventhub_name : null
+  storage_account_id             = local.parsed_diag.storage_account_id
 
-  log {
-    category = "VMProtectionAlerts"
-
-    retention_policy {
-      enabled = false
-    }
-  }
-
-  metric {
-    category = "AllMetrics"
+  dynamic "log" {
+    for_each = setintersection(local.parsed_diag.log, local.diag_vnet_logs)
+    content {
+      category = log.value
 
     retention_policy {
       enabled = false
     }
   }
+  }
+
+  dynamic "metric" {
+    for_each = setintersection(local.parsed_diag.metric, local.diag_vnet_metrics)
+    content {
+      category = metric.value
+
+    retention_policy {
+      enabled = false
+    }
+  }
+}
 }
 
 #
@@ -247,25 +288,24 @@ resource "azurerm_network_security_rule" "vnet" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "nsg" {
-  count                      = var.log_analytics_workspace_id != null ? length(var.subnets) : 0
-  name                       = "${var.subnets[count.index].name}-log-analytics"
-  target_resource_id         = azurerm_network_security_group.vnet[count.index].id
-  log_analytics_workspace_id = var.log_analytics_workspace_id
+  for_each = local.subnets_map
 
-  log {
-    category = "NetworkSecurityGroupEvent"
+  name                           = "${each.key}-diag"
+  target_resource_id             = azurerm_network_security_group.vnet[each.key].id
+  log_analytics_workspace_id     = local.parsed_diag.log_analytics_id
+  eventhub_authorization_rule_id = local.parsed_diag.event_hub_auth_id
+  eventhub_name                  = local.parsed_diag.event_hub_auth_id != null ? var.diagnostics.eventhub_name : null
+  storage_account_id             = local.parsed_diag.storage_account_id
+
+  dynamic "log" {
+    for_each = setintersection(local.parsed_diag.log, local.diag_nsg_logs)
+    content {
+      category = log.value
 
     retention_policy {
       enabled = false
     }
   }
-
-  log {
-    category = "NetworkSecurityGroupRuleCounter"
-
-    retention_policy {
-      enabled = false
-    }
   }
 }
 
