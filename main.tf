@@ -30,25 +30,17 @@ locals {
     destination_application_security_group_ids = null
   }
 
-  flatten_nsg_rules = flatten([for idx, subnet in var.subnets :
+  flatten_nsg_rules = flatten([for subnet in var.subnets :
     [for ridx, r in subnet.security_rules : {
-      subnet   = idx
+      subnet   = subnet.name
       priority = 100 + 100 * ridx
       rule     = merge(local.default_nsg_rule, r)
     }]
   ])
+  nsg_rules_map = { for rule in local.flatten_nsg_rules : "${rule.subnet}.${rule.priority}" => rule }
 
-  flatten_routes = flatten([for idx, subnet in var.subnets :
-    [for r in subnet.routes : {
-      subnet = idx
-      route  = r
-    }]
-  ])
-
-  defined_routes = [for idx, subnet in var.subnets : {
-    idx    = idx
-    subnet = subnet
-  } if length(subnet.routes) > 0]
+  subnets_with_routes = { for subnet in var.subnets : subnet.name => subnet if ! coalesce(subnet.disable_firewall_route, false) }
+  subnets_map         = { for subnet in var.subnets : subnet.name => subnet }
 
   splitted_hub_vnet   = split("/", var.hub_virtual_network_id)
   hub_subscription_id = local.splitted_hub_vnet[2]
@@ -85,7 +77,7 @@ locals {
     event_hub_auth_id  = null
     metric             = []
     log                = []
-}
+  }
 }
 
 #
@@ -145,10 +137,10 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
     content {
       category = log.value
 
-    retention_policy {
-      enabled = false
+      retention_policy {
+        enabled = false
+      }
     }
-  }
   }
 
   dynamic "metric" {
@@ -156,11 +148,11 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
     content {
       category = metric.value
 
-    retention_policy {
-      enabled = false
+      retention_policy {
+        enabled = false
+      }
     }
   }
-}
 }
 
 #
@@ -168,13 +160,14 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
 #
 
 resource "azurerm_subnet" "vnet" {
-  count                = length(var.subnets)
-  name                 = var.subnets[count.index].name
+  for_each = local.subnets_map
+
+  name                 = each.key
   resource_group_name  = azurerm_resource_group.vnet.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefix       = var.subnets[count.index].address_prefix
+  address_prefix       = each.value.address_prefix
 
-  service_endpoints = var.subnets[count.index].service_endpoints
+  service_endpoints = each.value.service_endpoints
 
   # TODO Add support for delegation. Some delegation doesnt support UDR
 
@@ -244,8 +237,9 @@ resource "azurerm_subnet_route_table_association" "vnet" {
 #
 
 resource "azurerm_network_security_group" "vnet" {
-  count               = length(var.subnets)
-  name                = "${var.subnets[count.index].name}-nsg"
+  for_each = local.subnets_map
+
+  name                = "${each.key}-nsg"
   location            = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
 
@@ -264,26 +258,27 @@ resource "null_resource" "vnet_logs" {
 }
 
 resource "azurerm_network_security_rule" "vnet" {
-  count                       = length(local.flatten_nsg_rules)
-  resource_group_name         = azurerm_resource_group.vnet.name
-  network_security_group_name = azurerm_network_security_group.vnet[local.flatten_nsg_rules[count.index].subnet].name
-  priority                    = local.flatten_nsg_rules[count.index].priority
+  for_each = local.nsg_rules_map
 
-  name                                       = local.flatten_nsg_rules[count.index].rule.name
-  direction                                  = local.flatten_nsg_rules[count.index].rule.direction
-  access                                     = local.flatten_nsg_rules[count.index].rule.access
-  protocol                                   = local.flatten_nsg_rules[count.index].rule.protocol
-  description                                = local.flatten_nsg_rules[count.index].rule.description
-  source_port_range                          = local.flatten_nsg_rules[count.index].rule.source_port_range
-  source_port_ranges                         = local.flatten_nsg_rules[count.index].rule.source_port_ranges
-  destination_port_range                     = local.flatten_nsg_rules[count.index].rule.destination_port_range
-  destination_port_ranges                    = local.flatten_nsg_rules[count.index].rule.destination_port_ranges
-  source_address_prefix                      = local.flatten_nsg_rules[count.index].rule.source_address_prefix
-  source_address_prefixes                    = local.flatten_nsg_rules[count.index].rule.source_address_prefixes
-  source_application_security_group_ids      = local.flatten_nsg_rules[count.index].rule.source_application_security_group_ids
-  destination_address_prefix                 = local.flatten_nsg_rules[count.index].rule.destination_address_prefix
-  destination_address_prefixes               = local.flatten_nsg_rules[count.index].rule.destination_address_prefixes
-  destination_application_security_group_ids = local.flatten_nsg_rules[count.index].rule.destination_application_security_group_ids
+  resource_group_name         = azurerm_resource_group.vnet.name
+  network_security_group_name = azurerm_network_security_group.vnet[each.value.subnet].name
+  priority                    = each.value.priority
+
+  name                                       = each.value.rule.name
+  direction                                  = each.value.rule.direction
+  access                                     = each.value.rule.access
+  protocol                                   = each.value.rule.protocol
+  description                                = each.value.rule.description
+  source_port_range                          = each.value.rule.source_port_range
+  source_port_ranges                         = each.value.rule.source_port_ranges
+  destination_port_range                     = each.value.rule.destination_port_range
+  destination_port_ranges                    = each.value.rule.destination_port_ranges
+  source_address_prefix                      = each.value.rule.source_address_prefix
+  source_address_prefixes                    = each.value.rule.source_address_prefixes
+  source_application_security_group_ids      = each.value.rule.source_application_security_group_ids
+  destination_address_prefix                 = each.value.rule.destination_address_prefix
+  destination_address_prefixes               = each.value.rule.destination_address_prefixes
+  destination_application_security_group_ids = each.value.rule.destination_application_security_group_ids
 }
 
 resource "azurerm_monitor_diagnostic_setting" "nsg" {
@@ -301,17 +296,18 @@ resource "azurerm_monitor_diagnostic_setting" "nsg" {
     content {
       category = log.value
 
-    retention_policy {
-      enabled = false
+      retention_policy {
+        enabled = false
+      }
     }
-  }
   }
 }
 
 resource "azurerm_subnet_network_security_group_association" "vnet" {
-  count                     = length(var.subnets)
-  subnet_id                 = azurerm_subnet.vnet[count.index].id
-  network_security_group_id = azurerm_network_security_group.vnet[count.index].id
+  for_each = local.subnets_map
+
+  subnet_id                 = azurerm_subnet.vnet[each.key].id
+  network_security_group_id = azurerm_network_security_group.vnet[each.key].id
 }
 
 #

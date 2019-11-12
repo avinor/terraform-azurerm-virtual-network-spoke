@@ -11,5 +11,5 @@ output "vnet_name" {
 }
 
 output "subnets" {
-  value = zipmap(var.subnets.*.name, azurerm_subnet.vnet.*.id)
+  value = { for subnet in azurerm_subnet.vnet : subnet.name => subnet.id }
 }
