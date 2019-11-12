@@ -216,8 +216,7 @@ module "storage" {
 #
 
 resource "azurerm_route_table" "vnet" {
-  count               = length(local.defined_routes)
-  name                = "${local.defined_routes[count.index].subnet.name}-rt"
+  name                = "${var.name}-outbound-rt"
   location            = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
 
@@ -225,19 +224,19 @@ resource "azurerm_route_table" "vnet" {
 }
 
 resource "azurerm_route" "vnet" {
-  count                  = length(local.flatten_routes)
-  name                   = local.flatten_routes[count.index].route.name
+  name                   = "firewall"
   resource_group_name    = azurerm_resource_group.vnet.name
-  route_table_name       = azurerm_route_table.vnet[local.flatten_routes[count.index].subnet].name
-  address_prefix         = local.flatten_routes[count.index].route.address_prefix
-  next_hop_type          = local.flatten_routes[count.index].route.next_hop_type
-  next_hop_in_ip_address = local.flatten_routes[count.index].route.next_hop_in_ip_address
+  route_table_name       = azurerm_route_table.vnet.name
+  address_prefix         = "0.0.0.0/0"
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = var.firewall_ip
 }
 
 resource "azurerm_subnet_route_table_association" "vnet" {
-  count          = length(local.defined_routes)
-  subnet_id      = azurerm_subnet.vnet[local.defined_routes[count.index].idx].id
-  route_table_id = azurerm_route_table.vnet[count.index].id
+  for_each = local.subnets_with_routes
+
+  subnet_id      = azurerm_subnet.vnet[each.key].id
+  route_table_id = azurerm_route_table.vnet.id
 }
 
 #

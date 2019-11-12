@@ -25,9 +25,13 @@ variable "hub_virtual_network_id" {
   description = "Id of the hub virtual network that spoke should peer against."
 }
 
+variable "firewall_ip" {
+  description = "Private ip of firewall to route all traffic through."
+}
+
 variable "subnets" {
   description = "Subnets to create and their configuration. All values are required, set empty to ignore."
-  type        = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any), routes = list(object({ name = string, address_prefix = string, next_hop_type = string, next_hop_in_ip_address = string })) }))
+  type        = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any), disable_firewall_route = bool }))
 }
 
 variable "use_remote_gateway" {
