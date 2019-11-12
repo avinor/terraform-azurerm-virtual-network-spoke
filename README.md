@@ -14,12 +14,6 @@ Currently spoke subnets do not support delegation as not all delegation resource
 
 It is not an option to turn off UDR as that allows any subnet to create public ips and have full access out.
 
-## Setup
-
-Since spoke requires access to hub network to initiate peering it requires access to hub virtual network. Service principal that deploys spoke therefore needs a custom role, or Network Contributor role on hub virtual network. See [Microsoft documentation](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-manage-peering#permissions) for required setup.
-
-If Log Analytics workspace is created in another subscription it is required that service principal has Log Analytics Contributor role on workspace, or a custom role allowing it to connect resources to workspace.
-
 ## Usage
 
 Example below only creates a single subnet, but it can create as many as required. Each subnet has its own service endpoint and security rules (NSG) defined. There are no default security rules so if its required to have a deny_all rule make sure to add it last in the list.
@@ -50,6 +44,18 @@ inputs {
     ]
 }
 ```
+
+## Setup
+
+Since spoke requires access to hub network to initiate peering it requires access to hub virtual network. Service principal that deploys spoke therefore needs a custom role, or Network Contributor role on hub virtual network. See [Microsoft documentation](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-manage-peering#permissions) for required setup.
+
+If Log Analytics workspace is created in another subscription it is required that service principal has Log Analytics Contributor role on workspace, or a custom role allowing it to connect resources to workspace.
+
+## Diagnostics
+
+Diagnostics settings can be sent to either storage account, event hub or Log Analytics workspace. The variable `diagnostics.destination` is the id of receiver, ie. storage account id, event namespace authorization rule id or log analytics resource id. Depending on what id is it will detect where to send. Unless using event namespace the `eventhub_name` is not required, just set to `null` for storage account and log analytics workspace.
+
+Setting `all` in logs and metrics will send all possible diagnostics to destination. If not using `all` type name of categories to send.
 
 ## Network watcher
 
