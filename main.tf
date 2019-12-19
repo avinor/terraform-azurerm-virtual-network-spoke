@@ -41,7 +41,6 @@ locals {
   subnets_with_routes = { for subnet in var.subnets : subnet.name => subnet if ! coalesce(subnet.disable_firewall_route, false) }
   subnets_map         = { for subnet in var.subnets : subnet.name => subnet }
 
-
   splitted_hub_vnet   = split("/", var.hub_virtual_network_id)
   hub_subscription_id = local.splitted_hub_vnet[2]
   hub_vnet_rg_name    = local.splitted_hub_vnet[4]
@@ -160,7 +159,7 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
 #
 
 resource "azurerm_subnet" "vnet" {
-  count                = length(var.subnets)
+  count = length(var.subnets)
 
   name                 = var.subnets[count.index].name
   resource_group_name  = azurerm_resource_group.vnet.name
@@ -226,10 +225,9 @@ resource "azurerm_route" "vnet" {
 }
 
 resource "azurerm_subnet_route_table_association" "vnet" {
-  count     = length(local.subnets_with_routes)
+  count = length(local.subnets_with_routes)
 
-  subnet_id = azurerm_subnet.vnet[count.index].id
-
+  subnet_id      = azurerm_subnet.vnet[count.index].id
   route_table_id = azurerm_route_table.vnet.id
 }
 
@@ -238,7 +236,7 @@ resource "azurerm_subnet_route_table_association" "vnet" {
 #
 
 resource "azurerm_network_security_group" "vnet" {
-  count               = length(var.subnets)
+  count = length(var.subnets)
 
   name                = "${var.subnets[count.index].name}-nsg"
   location            = azurerm_resource_group.vnet.location
@@ -259,7 +257,7 @@ resource "null_resource" "vnet_logs" {
 }
 
 resource "azurerm_network_security_rule" "vnet" {
-  count                       = length(local.flatten_nsg_rules)
+  count = length(local.flatten_nsg_rules)
 
   resource_group_name         = azurerm_resource_group.vnet.name
   network_security_group_name = azurerm_network_security_group.vnet[local.flatten_nsg_rules[count.index].subnet].name
@@ -305,11 +303,10 @@ resource "azurerm_monitor_diagnostic_setting" "nsg" {
 }
 
 resource "azurerm_subnet_network_security_group_association" "vnet" {
-  count                     = length(var.subnets)
+  count = length(var.subnets)
 
   subnet_id                 = azurerm_subnet.vnet[count.index].id
   network_security_group_id = azurerm_network_security_group.vnet[count.index].id
-
 }
 
 #
