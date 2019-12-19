@@ -6,7 +6,7 @@ terraform {
 }
 
 provider "azurerm" {
-  alias           = "hub"
+  alias = "hub"
   subscription_id = local.hub_subscription_id
 }
 
@@ -14,38 +14,38 @@ data "azurerm_client_config" "current" {}
 
 locals {
   default_nsg_rule = {
-    direction                                  = "Inbound"
-    access                                     = "Allow"
-    protocol                                   = "Tcp"
-    description                                = null
-    source_port_range                          = null
-    source_port_ranges                         = null
-    destination_port_range                     = null
-    destination_port_ranges                    = null
-    source_address_prefix                      = null
-    source_address_prefixes                    = null
-    source_application_security_group_ids      = null
-    destination_address_prefix                 = null
-    destination_address_prefixes               = null
+    direction = "Inbound"
+    access = "Allow"
+    protocol = "Tcp"
+    description = null
+    source_port_range = null
+    source_port_ranges = null
+    destination_port_range = null
+    destination_port_ranges = null
+    source_address_prefix = null
+    source_address_prefixes = null
+    source_application_security_group_ids = null
+    destination_address_prefix = null
+    destination_address_prefixes = null
     destination_application_security_group_ids = null
   }
 
-  flatten_nsg_rules = flatten([for subnet in var.subnets :
-    [for ridx, r in subnet.security_rules : {
-      subnet   = subnet.name
-      priority = 100 + 100 * ridx
-      rule     = merge(local.default_nsg_rule, r)
-    }]
+  flatten_nsg_rules = flatten([for idx, subnet in var.subnets :
+  [for ridx, r in subnet.security_rules : {
+    subnet = idx
+    priority = 100 + 100 * ridx
+    rule = merge(local.default_nsg_rule, r)
+  }]
   ])
-  nsg_rules_map = { for rule in local.flatten_nsg_rules : "${rule.subnet}.${rule.priority}" => rule }
 
-  subnets_with_routes = { for subnet in var.subnets : subnet.name => subnet if ! coalesce(subnet.disable_firewall_route, false) }
-  subnets_map         = { for subnet in var.subnets : subnet.name => subnet }
+  subnets_with_routes = {for subnet in var.subnets : subnet.name => subnet if ! coalesce(subnet.disable_firewall_route, false)}
+  subnets_map = {for subnet in var.subnets : subnet.name => subnet}
 
-  splitted_hub_vnet   = split("/", var.hub_virtual_network_id)
+
+  splitted_hub_vnet = split("/", var.hub_virtual_network_id)
   hub_subscription_id = local.splitted_hub_vnet[2]
-  hub_vnet_rg_name    = local.splitted_hub_vnet[4]
-  hub_vnet_name       = local.splitted_hub_vnet[8]
+  hub_vnet_rg_name = local.splitted_hub_vnet[4]
+  hub_vnet_name = local.splitted_hub_vnet[8]
 
   diag_vnet_logs = [
     "VMProtectionAlerts",
@@ -59,24 +59,24 @@ locals {
   ]
 
   diag_all_logs = setunion(
-    local.diag_vnet_logs,
+  local.diag_vnet_logs,
   local.diag_nsg_logs)
   diag_all_metrics = setunion(
   local.diag_vnet_metrics)
 
   diag_resource_list = var.diagnostics != null ? split("/", var.diagnostics.destination) : []
   parsed_diag = var.diagnostics != null ? {
-    log_analytics_id   = contains(local.diag_resource_list, "microsoft.operationalinsights") ? var.diagnostics.destination : null
+    log_analytics_id = contains(local.diag_resource_list, "microsoft.operationalinsights") ? var.diagnostics.destination : null
     storage_account_id = contains(local.diag_resource_list, "Microsoft.Storage") ? var.diagnostics.destination : null
-    event_hub_auth_id  = contains(local.diag_resource_list, "Microsoft.EventHub") ? var.diagnostics.destination : null
-    metric             = contains(var.diagnostics.metrics, "all") ? local.diag_all_metrics : var.diagnostics.metrics
-    log                = contains(var.diagnostics.logs, "all") ? local.diag_all_logs : var.diagnostics.logs
-    } : {
-    log_analytics_id   = null
+    event_hub_auth_id = contains(local.diag_resource_list, "Microsoft.EventHub") ? var.diagnostics.destination : null
+    metric = contains(var.diagnostics.metrics, "all") ? local.diag_all_metrics : var.diagnostics.metrics
+    log = contains(var.diagnostics.logs, "all") ? local.diag_all_logs : var.diagnostics.logs
+  } : {
+    log_analytics_id = null
     storage_account_id = null
-    event_hub_auth_id  = null
-    metric             = []
-    log                = []
+    event_hub_auth_id = null
+    metric = []
+    log = []
   }
 }
 
@@ -86,17 +86,17 @@ locals {
 #
 
 resource "azurerm_resource_group" "netwatcher" {
-  count    = var.netwatcher != null ? 1 : 0
-  name     = "NetworkWatcherRG"
+  count = var.netwatcher != null ? 1 : 0
+  name = "NetworkWatcherRG"
   location = var.netwatcher.resource_group_location
 
   tags = var.tags
 }
 
 resource "azurerm_network_watcher" "netwatcher" {
-  count               = var.netwatcher != null ? 1 : 0
-  name                = "NetworkWatcher_${var.location}"
-  location            = var.location
+  count = var.netwatcher != null ? 1 : 0
+  name = "NetworkWatcher_${var.location}"
+  location = var.location
   resource_group_name = azurerm_resource_group.netwatcher.0.name
 
   tags = var.tags
@@ -107,15 +107,15 @@ resource "azurerm_network_watcher" "netwatcher" {
 #
 
 resource "azurerm_resource_group" "vnet" {
-  name     = var.resource_group_name
+  name = var.resource_group_name
   location = var.location
 
   tags = var.tags
 }
 
 resource "azurerm_virtual_network" "vnet" {
-  name                = "${var.name}-vnet"
-  location            = azurerm_resource_group.vnet.location
+  name = "${var.name}-vnet"
+  location = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
 
   address_space = var.address_space
@@ -124,13 +124,13 @@ resource "azurerm_virtual_network" "vnet" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "vnet" {
-  count                          = var.diagnostics != null ? 1 : 0
-  name                           = "vnet-diag"
-  target_resource_id             = azurerm_virtual_network.vnet.id
-  log_analytics_workspace_id     = local.parsed_diag.log_analytics_id
+  count = var.diagnostics != null ? 1 : 0
+  name = "vnet-diag"
+  target_resource_id = azurerm_virtual_network.vnet.id
+  log_analytics_workspace_id = local.parsed_diag.log_analytics_id
   eventhub_authorization_rule_id = local.parsed_diag.event_hub_auth_id
-  eventhub_name                  = local.parsed_diag.event_hub_auth_id != null ? var.diagnostics.eventhub_name : null
-  storage_account_id             = local.parsed_diag.storage_account_id
+  eventhub_name = local.parsed_diag.event_hub_auth_id != null ? var.diagnostics.eventhub_name : null
+  storage_account_id = local.parsed_diag.storage_account_id
 
   dynamic "log" {
     for_each = setintersection(local.parsed_diag.log, local.diag_vnet_logs)
@@ -160,14 +160,13 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
 #
 
 resource "azurerm_subnet" "vnet" {
-  for_each = local.subnets_map
-
-  name                 = each.key
-  resource_group_name  = azurerm_resource_group.vnet.name
+  count = length(var.subnets)
+  name = var.subnets[count.index].name
+  resource_group_name = azurerm_resource_group.vnet.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefix       = each.value.address_prefix
+  address_prefix = var.subnets[count.index].address_prefix
 
-  service_endpoints = each.value.service_endpoints
+  service_endpoints = var.subnets[count.index].service_endpoints
 
   # TODO Add support for delegation. Some delegation doesnt support UDR
 
@@ -185,12 +184,12 @@ resource "azurerm_subnet" "vnet" {
 #
 
 module "storage" {
-  source  = "avinor/storage-account/azurerm"
+  source = "avinor/storage-account/azurerm"
   version = "1.4.0"
 
-  name                = var.name
+  name = var.name
   resource_group_name = azurerm_resource_group.vnet.name
-  location            = azurerm_resource_group.vnet.location
+  location = azurerm_resource_group.vnet.location
 
   enable_advanced_threat_protection = true
 
@@ -209,26 +208,27 @@ module "storage" {
 #
 
 resource "azurerm_route_table" "vnet" {
-  name                = "${var.name}-outbound-rt"
-  location            = azurerm_resource_group.vnet.location
+  name = "${var.name}-outbound-rt"
+  location = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
 
   tags = var.tags
 }
 
 resource "azurerm_route" "vnet" {
-  name                   = "firewall"
-  resource_group_name    = azurerm_resource_group.vnet.name
-  route_table_name       = azurerm_route_table.vnet.name
-  address_prefix         = "0.0.0.0/0"
-  next_hop_type          = "VirtualAppliance"
+  name = "firewall"
+  resource_group_name = azurerm_resource_group.vnet.name
+  route_table_name = azurerm_route_table.vnet.name
+  address_prefix = "0.0.0.0/0"
+  next_hop_type = "VirtualAppliance"
   next_hop_in_ip_address = var.firewall_ip
 }
 
 resource "azurerm_subnet_route_table_association" "vnet" {
-  for_each = local.subnets_with_routes
 
-  subnet_id      = azurerm_subnet.vnet[each.key].id
+  count = length(local.subnets_with_routes)
+  subnet_id = azurerm_subnet.vnet[count.index].id
+
   route_table_id = azurerm_route_table.vnet.id
 }
 
@@ -237,10 +237,9 @@ resource "azurerm_subnet_route_table_association" "vnet" {
 #
 
 resource "azurerm_network_security_group" "vnet" {
-  for_each = local.subnets_map
-
-  name                = "${each.key}-nsg"
-  location            = azurerm_resource_group.vnet.location
+  count = length(var.subnets)
+  name = "${var.subnets[count.index].name}-nsg"
+  location = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
 
   tags = var.tags
@@ -254,42 +253,42 @@ resource "null_resource" "vnet_logs" {
     command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${azurerm_network_security_group.vnet[each.key].name} --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.netwatcher.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
   }
 
-  depends_on = ["azurerm_network_security_group.vnet"]
+  depends_on = [
+    "azurerm_network_security_group.vnet"]
 }
 
 resource "azurerm_network_security_rule" "vnet" {
-  for_each = local.nsg_rules_map
+  count = length(local.flatten_nsg_rules)
+  resource_group_name = azurerm_resource_group.vnet.name
+  network_security_group_name = azurerm_network_security_group.vnet[local.flatten_nsg_rules[count.index].subnet].name
+  priority = local.flatten_nsg_rules[count.index].priority
 
-  resource_group_name         = azurerm_resource_group.vnet.name
-  network_security_group_name = azurerm_network_security_group.vnet[each.value.subnet].name
-  priority                    = each.value.priority
-
-  name                                       = each.value.rule.name
-  direction                                  = each.value.rule.direction
-  access                                     = each.value.rule.access
-  protocol                                   = each.value.rule.protocol
-  description                                = each.value.rule.description
-  source_port_range                          = each.value.rule.source_port_range
-  source_port_ranges                         = each.value.rule.source_port_ranges
-  destination_port_range                     = each.value.rule.destination_port_range
-  destination_port_ranges                    = each.value.rule.destination_port_ranges
-  source_address_prefix                      = each.value.rule.source_address_prefix
-  source_address_prefixes                    = each.value.rule.source_address_prefixes
-  source_application_security_group_ids      = each.value.rule.source_application_security_group_ids
-  destination_address_prefix                 = each.value.rule.destination_address_prefix
-  destination_address_prefixes               = each.value.rule.destination_address_prefixes
-  destination_application_security_group_ids = each.value.rule.destination_application_security_group_ids
+  name = local.flatten_nsg_rules[count.index].rule.name
+  direction = local.flatten_nsg_rules[count.index].rule.direction
+  access = local.flatten_nsg_rules[count.index].rule.access
+  protocol = local.flatten_nsg_rules[count.index].rule.protocol
+  description = local.flatten_nsg_rules[count.index].rule.description
+  source_port_range = local.flatten_nsg_rules[count.index].rule.source_port_range
+  source_port_ranges = local.flatten_nsg_rules[count.index].rule.source_port_ranges
+  destination_port_range = local.flatten_nsg_rules[count.index].rule.destination_port_range
+  destination_port_ranges = local.flatten_nsg_rules[count.index].rule.destination_port_ranges
+  source_address_prefix = local.flatten_nsg_rules[count.index].rule.source_address_prefix
+  source_address_prefixes = local.flatten_nsg_rules[count.index].rule.source_address_prefixes
+  source_application_security_group_ids = local.flatten_nsg_rules[count.index].rule.source_application_security_group_ids
+  destination_address_prefix = local.flatten_nsg_rules[count.index].rule.destination_address_prefix
+  destination_address_prefixes = local.flatten_nsg_rules[count.index].rule.destination_address_prefixes
+  destination_application_security_group_ids = local.flatten_nsg_rules[count.index].rule.destination_application_security_group_ids
 }
 
 resource "azurerm_monitor_diagnostic_setting" "nsg" {
-  for_each = local.subnets_map
+  count = length(local.subnets_map)
 
-  name                           = "${each.key}-diag"
-  target_resource_id             = azurerm_network_security_group.vnet[each.key].id
-  log_analytics_workspace_id     = local.parsed_diag.log_analytics_id
+  name = "${var.subnets[count.index].name}-diag"
+  target_resource_id = azurerm_network_security_group.vnet[count.index].id
+  log_analytics_workspace_id = local.parsed_diag.log_analytics_id
   eventhub_authorization_rule_id = local.parsed_diag.event_hub_auth_id
-  eventhub_name                  = local.parsed_diag.event_hub_auth_id != null ? var.diagnostics.eventhub_name : null
-  storage_account_id             = local.parsed_diag.storage_account_id
+  eventhub_name = local.parsed_diag.event_hub_auth_id != null ? var.diagnostics.eventhub_name : null
+  storage_account_id = local.parsed_diag.storage_account_id
 
   dynamic "log" {
     for_each = setintersection(local.parsed_diag.log, local.diag_nsg_logs)
@@ -304,10 +303,10 @@ resource "azurerm_monitor_diagnostic_setting" "nsg" {
 }
 
 resource "azurerm_subnet_network_security_group_association" "vnet" {
-  for_each = local.subnets_map
+  count = length(var.subnets)
+  subnet_id = azurerm_subnet.vnet[count.index].id
+  network_security_group_id = azurerm_network_security_group.vnet[count.index].id
 
-  subnet_id                 = azurerm_subnet.vnet[each.key].id
-  network_security_group_id = azurerm_network_security_group.vnet[each.key].id
 }
 
 #
@@ -315,13 +314,13 @@ resource "azurerm_subnet_network_security_group_association" "vnet" {
 #
 
 resource "azurerm_private_dns_zone_virtual_network_link" "main" {
-  provider              = "azurerm.hub"
-  count                 = var.private_dns_link != null ? 1 : 0
-  name                  = "${var.name}-link-${random_string.hub.result}"
-  resource_group_name   = var.private_dns_link.resource_group_name
+  provider = "azurerm.hub"
+  count = var.private_dns_link != null ? 1 : 0
+  name = "${var.name}-link-${random_string.hub.result}"
+  resource_group_name = var.private_dns_link.resource_group_name
   private_dns_zone_name = var.private_dns_link.zone_name
-  virtual_network_id    = azurerm_virtual_network.vnet.id
-  registration_enabled  = true
+  virtual_network_id = azurerm_virtual_network.vnet.id
+  registration_enabled = true
 
   tags = var.tags
 }
@@ -331,34 +330,36 @@ resource "azurerm_private_dns_zone_virtual_network_link" "main" {
 #
 
 resource "azurerm_virtual_network_peering" "spoke-to-hub" {
-  name                         = "peering-to-hub"
-  resource_group_name          = azurerm_resource_group.vnet.name
-  virtual_network_name         = azurerm_virtual_network.vnet.name
-  remote_virtual_network_id    = var.hub_virtual_network_id
+  name = "peering-to-hub"
+  resource_group_name = azurerm_resource_group.vnet.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  remote_virtual_network_id = var.hub_virtual_network_id
   allow_virtual_network_access = true
-  allow_forwarded_traffic      = true
-  allow_gateway_transit        = false
-  use_remote_gateways          = var.use_remote_gateway
+  allow_forwarded_traffic = true
+  allow_gateway_transit = false
+  use_remote_gateways = var.use_remote_gateway
 
-  depends_on = ["azurerm_virtual_network.vnet"]
+  depends_on = [
+    "azurerm_virtual_network.vnet"]
 }
 
 resource "random_string" "hub" {
-  length  = 6
+  length = 6
   special = false
-  upper   = false
+  upper = false
 }
 
 resource "azurerm_virtual_network_peering" "hub-to-spoke" {
-  provider                     = "azurerm.hub"
-  name                         = "peering-to-spoke-${var.name}-${random_string.hub.result}"
-  resource_group_name          = local.hub_vnet_rg_name
-  virtual_network_name         = local.hub_vnet_name
-  remote_virtual_network_id    = azurerm_virtual_network.vnet.id
+  provider = "azurerm.hub"
+  name = "peering-to-spoke-${var.name}-${random_string.hub.result}"
+  resource_group_name = local.hub_vnet_rg_name
+  virtual_network_name = local.hub_vnet_name
+  remote_virtual_network_id = azurerm_virtual_network.vnet.id
   allow_virtual_network_access = true
-  allow_forwarded_traffic      = true
-  allow_gateway_transit        = true
-  use_remote_gateways          = false
+  allow_forwarded_traffic = true
+  allow_gateway_transit = true
+  use_remote_gateways = false
 
-  depends_on = ["azurerm_virtual_network_peering.spoke-to-hub"]
+  depends_on = [
+    "azurerm_virtual_network_peering.spoke-to-hub"]
 }
