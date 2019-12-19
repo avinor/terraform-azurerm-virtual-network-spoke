@@ -161,6 +161,7 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
 
 resource "azurerm_subnet" "vnet" {
   count                = length(var.subnets)
+
   name                 = var.subnets[count.index].name
   resource_group_name  = azurerm_resource_group.vnet.name
   virtual_network_name = azurerm_virtual_network.vnet.name
@@ -225,8 +226,8 @@ resource "azurerm_route" "vnet" {
 }
 
 resource "azurerm_subnet_route_table_association" "vnet" {
-
   count     = length(local.subnets_with_routes)
+
   subnet_id = azurerm_subnet.vnet[count.index].id
 
   route_table_id = azurerm_route_table.vnet.id
@@ -238,6 +239,7 @@ resource "azurerm_subnet_route_table_association" "vnet" {
 
 resource "azurerm_network_security_group" "vnet" {
   count               = length(var.subnets)
+
   name                = "${var.subnets[count.index].name}-nsg"
   location            = azurerm_resource_group.vnet.location
   resource_group_name = azurerm_resource_group.vnet.name
@@ -253,12 +255,12 @@ resource "null_resource" "vnet_logs" {
     command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${azurerm_network_security_group.vnet[each.key].name} --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.netwatcher.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
   }
 
-  depends_on = [
-  "azurerm_network_security_group.vnet"]
+  depends_on = ["azurerm_network_security_group.vnet"]
 }
 
 resource "azurerm_network_security_rule" "vnet" {
   count                       = length(local.flatten_nsg_rules)
+
   resource_group_name         = azurerm_resource_group.vnet.name
   network_security_group_name = azurerm_network_security_group.vnet[local.flatten_nsg_rules[count.index].subnet].name
   priority                    = local.flatten_nsg_rules[count.index].priority
@@ -304,6 +306,7 @@ resource "azurerm_monitor_diagnostic_setting" "nsg" {
 
 resource "azurerm_subnet_network_security_group_association" "vnet" {
   count                     = length(var.subnets)
+
   subnet_id                 = azurerm_subnet.vnet[count.index].id
   network_security_group_id = azurerm_network_security_group.vnet[count.index].id
 
@@ -339,8 +342,7 @@ resource "azurerm_virtual_network_peering" "spoke-to-hub" {
   allow_gateway_transit        = false
   use_remote_gateways          = var.use_remote_gateway
 
-  depends_on = [
-  "azurerm_virtual_network.vnet"]
+  depends_on = ["azurerm_virtual_network.vnet"]
 }
 
 resource "random_string" "hub" {
@@ -360,6 +362,5 @@ resource "azurerm_virtual_network_peering" "hub-to-spoke" {
   allow_gateway_transit        = true
   use_remote_gateways          = false
 
-  depends_on = [
-  "azurerm_virtual_network_peering.spoke-to-hub"]
+  depends_on = ["azurerm_virtual_network_peering.spoke-to-hub"]
 }
