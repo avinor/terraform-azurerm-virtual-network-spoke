@@ -174,8 +174,8 @@ resource "azurerm_subnet" "vnet" {
   lifecycle {
     # TODO Remove this when azurerm 2.0 provider is released
     ignore_changes = [
-      "route_table_id",
-      "network_security_group_id",
+      route_table_id,
+      network_security_group_id,
     ]
   }
 }
@@ -254,7 +254,7 @@ resource "null_resource" "vnet_logs" {
     command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${azurerm_network_security_group.vnet[each.key].name} --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.netwatcher.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
   }
 
-  depends_on = ["azurerm_network_security_group.vnet"]
+  depends_on = [azurerm_network_security_group.vnet]
 }
 
 resource "azurerm_network_security_rule" "vnet" {
@@ -315,7 +315,7 @@ resource "azurerm_subnet_network_security_group_association" "vnet" {
 #
 
 resource "azurerm_private_dns_zone_virtual_network_link" "main" {
-  provider              = "azurerm.hub"
+  provider              = azurerm.hub
   count                 = var.private_dns_link != null ? 1 : 0
   name                  = "${var.name}-link-${random_string.hub.result}"
   resource_group_name   = var.private_dns_link.resource_group_name
@@ -340,7 +340,7 @@ resource "azurerm_virtual_network_peering" "spoke-to-hub" {
   allow_gateway_transit        = false
   use_remote_gateways          = var.use_remote_gateway
 
-  depends_on = ["azurerm_virtual_network.vnet"]
+  depends_on = [azurerm_virtual_network.vnet]
 }
 
 resource "random_string" "hub" {
@@ -350,7 +350,7 @@ resource "random_string" "hub" {
 }
 
 resource "azurerm_virtual_network_peering" "hub-to-spoke" {
-  provider                     = "azurerm.hub"
+  provider                     = azurerm.hub
   name                         = "peering-to-spoke-${var.name}-${random_string.hub.result}"
   resource_group_name          = local.hub_vnet_rg_name
   virtual_network_name         = local.hub_vnet_name
@@ -360,5 +360,5 @@ resource "azurerm_virtual_network_peering" "hub-to-spoke" {
   allow_gateway_transit        = true
   use_remote_gateways          = false
 
-  depends_on = ["azurerm_virtual_network_peering.spoke-to-hub"]
+  depends_on = [azurerm_virtual_network_peering.spoke-to-hub]
 }
