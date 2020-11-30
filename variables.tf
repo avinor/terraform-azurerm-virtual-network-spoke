@@ -17,8 +17,13 @@ variable "address_space" {
 
 variable "diagnostics" {
   description = "Diagnostic settings for those resources that support it. See README.md for details on configuration."
-  type        = object({ destination = string, eventhub_name = string, logs = list(string), metrics = list(string) })
-  default     = null
+  type = object({
+    destination   = string,
+    eventhub_name = string,
+    logs          = list(string),
+    metrics       = list(string),
+  })
+  default = null
 }
 
 variable "hub_virtual_network_id" {
@@ -31,7 +36,13 @@ variable "firewall_ip" {
 
 variable "subnets" {
   description = "Subnets to create and their configuration. All values are required, set empty to ignore."
-  type        = list(object({ name = string, address_prefix = string, service_endpoints = list(string), security_rules = list(any), disable_firewall_route = bool }))
+  type = list(object({
+    name                   = string,
+    address_prefix         = string,
+    service_endpoints      = list(string),
+    security_rules         = list(any),
+    disable_firewall_route = bool,
+  }))
 }
 
 variable "use_remote_gateway" {
@@ -42,14 +53,20 @@ variable "use_remote_gateway" {
 
 variable "private_dns_link" {
   description = "Private dns link for spoke network."
-  type        = object({ resource_group_name = string, zone_name = string })
-  default     = null
+  type = object({
+    resource_group_name = string,
+    zone_name           = string,
+  })
+  default = null
 }
 
 variable "netwatcher" {
   description = "Properties for creating network watcher. If set it will create Network Watcher resource using standard naming standard."
-  type        = object({ resource_group_location = string, log_analytics_workspace_id = string })
-  default     = null
+  type = object({
+    resource_group_location    = string,
+    log_analytics_workspace_id = string,
+  })
+  default = null
 }
 
 variable "tags" {

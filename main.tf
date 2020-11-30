@@ -1,13 +1,25 @@
 terraform {
   required_version = ">= 0.12.6"
-  required_providers {
-    azurerm = "~> 1.44.0"
-  }
 }
 
 provider "azurerm" {
+  version         = "~> 2.38.0"
   alias           = "hub"
   subscription_id = local.hub_subscription_id
+  features {}
+}
+
+provider "azurerm" {
+  version = "~> 2.38.0"
+  features {}
+}
+
+provider "null" {
+  version = "~> 2.1"
+}
+
+provider "random" {
+  version = "~> 2.3"
 }
 
 data "azurerm_client_config" "current" {}
@@ -165,19 +177,12 @@ resource "azurerm_subnet" "vnet" {
   name                 = each.key
   resource_group_name  = azurerm_resource_group.vnet.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefix       = each.value.address_prefix
+  address_prefixes     = [each.value.address_prefix]
 
   service_endpoints = each.value.service_endpoints
 
   # TODO Add support for delegation. Some delegation doesnt support UDR
 
-  lifecycle {
-    # TODO Remove this when azurerm 2.0 provider is released
-    ignore_changes = [
-      route_table_id,
-      network_security_group_id,
-    ]
-  }
 }
 
 #
@@ -186,7 +191,7 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "1.4.0"
+  version = "2.3.0"
 
   name                = var.name
   resource_group_name = azurerm_resource_group.vnet.name
