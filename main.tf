@@ -251,16 +251,47 @@ resource "azurerm_network_security_group" "vnet" {
   tags = var.tags
 }
 
-resource "null_resource" "vnet_logs" {
+resource "azurerm_network_watcher_flow_log" "vnet_logs" {
   for_each = var.netwatcher != null ? local.subnets_map : {}
 
-  # TODO Use new resource when exists
-  provisioner "local-exec" {
-    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${azurerm_network_security_group.vnet[each.key].name} --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.netwatcher.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
+  resource_group_name       = azurerm_resource_group.vnet.name
+  enabled                   = true
+  version                   = 2
+  network_security_group_id = azurerm_network_security_group.vnet[each.key].id
+  network_watcher_name      = azurerm_network_security_group.vnet[each.key].name
+  storage_account_id        = module.storage.id
+
+  traffic_analytics {
+    enabled               = true
+    workspace_id          = var.netwatcher.log_analytics_workspace_id
+    workspace_region      = azurerm_resource_group.netwatcher[0].location
+    workspace_resource_id = var.netwatcher.log_analytics_resource_id
   }
 
-  depends_on = [azurerm_network_security_group.vnet]
+  retention_policy {
+    days    = 0
+    enabled = false
+  }
 }
+
+//resource "null_resource" "vnet_logs" {
+//  for_each = var.netwatcher != null ? local.subnets_map : {}
+//
+//  # TODO Use new resource when exists
+//  provisioner "local-exec" {
+//    command = "az network watcher flow-log configure
+//-g ${azurerm_resource_group.vnet.name}
+//--enabled true
+//--log-version 2
+//--nsg ${azurerm_network_security_group.vnet[each.key].name}
+//--storage-account ${module.storage.id}
+//--traffic-analytics true
+//--workspace ${var.netwatcher.log_analytics_workspace_id}
+//--subscription ${data.azurerm_client_config.current.subscription_id}"
+//  }
+//
+//  depends_on = [azurerm_network_security_group.vnet]
+//}
 
 resource "azurerm_network_security_rule" "vnet" {
   for_each = local.nsg_rules_map
