@@ -274,25 +274,6 @@ resource "azurerm_network_watcher_flow_log" "vnet_logs" {
   }
 }
 
-//resource "null_resource" "vnet_logs" {
-//  for_each = var.netwatcher != null ? local.subnets_map : {}
-//
-//  # TODO Use new resource when exists
-//  provisioner "local-exec" {
-//    command = "az network watcher flow-log configure
-//-g ${azurerm_resource_group.vnet.name}
-//--enabled true
-//--log-version 2
-//--nsg ${azurerm_network_security_group.vnet[each.key].name}
-//--storage-account ${module.storage.id}
-//--traffic-analytics true
-//--workspace ${var.netwatcher.log_analytics_workspace_id}
-//--subscription ${data.azurerm_client_config.current.subscription_id}"
-//  }
-//
-//  depends_on = [azurerm_network_security_group.vnet]
-//}
-
 resource "azurerm_network_security_rule" "vnet" {
   for_each = local.nsg_rules_map
 
