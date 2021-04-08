@@ -1,25 +1,20 @@
 terraform {
   required_version = ">= 0.12.6"
+  required_providers {
+    azurerm = { version = "~> 2.38.0" }
+    null    = { version = "~> 2.1" }
+    random  = { version = "~> 2.3" }
+  }
 }
 
 provider "azurerm" {
-  version         = "~> 2.38.0"
   alias           = "hub"
   subscription_id = local.hub_subscription_id
   features {}
 }
 
 provider "azurerm" {
-  version = "~> 2.38.0"
   features {}
-}
-
-provider "null" {
-  version = "~> 2.1"
-}
-
-provider "random" {
-  version = "~> 2.3"
 }
 
 data "azurerm_client_config" "current" {}
@@ -181,8 +176,7 @@ resource "azurerm_subnet" "vnet" {
 
   service_endpoints = each.value.service_endpoints
 
-  # TODO Add support for delegation. Some delegation doesnt support UDR
-
+  # TODO Add support for delegation. Some delegation doesn't support UDR
 }
 
 #
