@@ -1,7 +1,7 @@
 terraform {
   required_version = ">= 0.12.6"
   required_providers {
-    azurerm = { version = "~> 2.38.0" }
+    azurerm = { version = "~> 2.53.0" }
     null    = { version = "~> 2.1" }
     random  = { version = "~> 2.3" }
   }
@@ -185,7 +185,7 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "2.3.0"
+  version = "2.4.0"
 
   name                = var.name
   resource_group_name = azurerm_resource_group.vnet.name
