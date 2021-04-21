@@ -248,8 +248,8 @@ resource "azurerm_network_security_group" "vnet" {
 resource "azurerm_network_watcher_flow_log" "vnet_logs" {
   for_each = var.netwatcher != null ? local.subnets_map : {}
 
-  network_watcher_name      = azurerm_network_watcher.netwatcher[0].name
-  resource_group_name       = azurerm_resource_group.netwatcher[0].name
+  network_watcher_name = azurerm_network_watcher.netwatcher[0].name
+  resource_group_name  = azurerm_resource_group.netwatcher[0].name
 
   network_security_group_id = azurerm_network_security_group.vnet[each.key].id
   storage_account_id        = module.storage.id
