@@ -1,13 +1,20 @@
 terraform {
-  required_version = ">= 0.12.6"
+  required_version = ">= 0.12.26"
   required_providers {
-    azurerm = "~> 1.44.0"
+    azurerm = { version = "~> 2.53.0" }
+    null    = { version = "~> 2.1" }
+    random  = { version = "~> 2.3" }
   }
 }
 
 provider "azurerm" {
   alias           = "hub"
   subscription_id = local.hub_subscription_id
+  features {}
+}
+
+provider "azurerm" {
+  features {}
 }
 
 data "azurerm_client_config" "current" {}
@@ -165,19 +172,11 @@ resource "azurerm_subnet" "vnet" {
   name                 = each.key
   resource_group_name  = azurerm_resource_group.vnet.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefix       = each.value.address_prefix
+  address_prefixes     = [each.value.address_prefix]
 
   service_endpoints = each.value.service_endpoints
 
-  # TODO Add support for delegation. Some delegation doesnt support UDR
-
-  lifecycle {
-    # TODO Remove this when azurerm 2.0 provider is released
-    ignore_changes = [
-      route_table_id,
-      network_security_group_id,
-    ]
-  }
+  # TODO Add support for delegation. Some delegation doesn't support UDR
 }
 
 #
@@ -186,7 +185,7 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "1.4.0"
+  version = "2.4.0"
 
   name                = var.name
   resource_group_name = azurerm_resource_group.vnet.name
@@ -246,15 +245,28 @@ resource "azurerm_network_security_group" "vnet" {
   tags = var.tags
 }
 
-resource "null_resource" "vnet_logs" {
+resource "azurerm_network_watcher_flow_log" "vnet_logs" {
   for_each = var.netwatcher != null ? local.subnets_map : {}
 
-  # TODO Use new resource when exists
-  provisioner "local-exec" {
-    command = "az network watcher flow-log configure -g ${azurerm_resource_group.vnet.name} --enabled true --log-version 2 --nsg ${azurerm_network_security_group.vnet[each.key].name} --storage-account ${module.storage.id} --traffic-analytics true --workspace ${var.netwatcher.log_analytics_workspace_id} --subscription ${data.azurerm_client_config.current.subscription_id}"
+  network_watcher_name = azurerm_network_watcher.netwatcher[0].name
+  resource_group_name  = azurerm_resource_group.netwatcher[0].name
+
+  network_security_group_id = azurerm_network_security_group.vnet[each.key].id
+  storage_account_id        = module.storage.id
+  enabled                   = true
+  version                   = 2
+
+  traffic_analytics {
+    enabled               = true
+    workspace_id          = var.netwatcher.log_analytics_workspace_id
+    workspace_region      = azurerm_resource_group.netwatcher[0].location
+    workspace_resource_id = var.netwatcher.log_analytics_resource_id
   }
 
-  depends_on = [azurerm_network_security_group.vnet]
+  retention_policy {
+    days    = 0
+    enabled = false
+  }
 }
 
 resource "azurerm_network_security_rule" "vnet" {
