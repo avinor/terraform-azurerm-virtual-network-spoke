@@ -193,8 +193,8 @@ resource "azurerm_subnet" "vnet" {
 #
 
 module "storage" {
-  source  = "github.com/avinor/terraform-azurerm-storage-account?ref=terraform-013-upgrade"
-//  version = "2.4.0"
+  source  = "avinor/storage-account/azurerm"
+  version = "3.0.0"
 
   name                = var.name
   resource_group_name = azurerm_resource_group.vnet.name
