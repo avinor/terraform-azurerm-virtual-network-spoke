@@ -1,16 +1,25 @@
 terraform {
-  required_version = ">= 0.12.26"
+  required_version = ">= 0.13"
   required_providers {
-    azurerm = { version = "~> 2.53.0" }
-    null    = { version = "~> 2.1" }
-    random  = { version = "~> 2.3" }
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 2.56.0"
+    }
+    null = {
+      source = "hashicorp/null"
+      version = "~> 3.1.0"
+    }
+    random = {
+      source = "hashicorp/random"
+      version = "~> 3.1.0"
+    }
   }
 }
 
 provider "azurerm" {
+  features {}
   alias           = "hub"
   subscription_id = local.hub_subscription_id
-  features {}
 }
 
 provider "azurerm" {
@@ -185,7 +194,7 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "2.4.0"
+  version = "3.0.0"
 
   name                = var.name
   resource_group_name = azurerm_resource_group.vnet.name
