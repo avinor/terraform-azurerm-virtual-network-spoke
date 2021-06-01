@@ -194,13 +194,13 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "3.0.0"
+  version = "3.0.1"
 
   name                = var.name
   resource_group_name = azurerm_resource_group.vnet.name
   location            = azurerm_resource_group.vnet.location
 
-  enable_advanced_threat_protection = true
+  enable_advanced_threat_protection = var.enable_advanced_threat_protection
 
   # TODO Not yet supported to use service endpoints together with flow logs. Not a trusted Microsoft service
   # See https://github.com/MicrosoftDocs/azure-docs/issues/5989
