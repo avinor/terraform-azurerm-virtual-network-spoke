@@ -35,7 +35,7 @@ module "spoke" {
   diagnostics = {
     destination   = "test"
     eventhub_name = "diagnostics",
-    logs          = ["all"],
-    metrics       = ["all"],
+    logs          = ["VMProtectionAlerts", "NetworkSecurityGroupEvent", "NetworkSecurityGroupRuleCounter"],
+    metrics       = ["AllMetrics"],
   }
 }
