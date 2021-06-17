@@ -6,11 +6,11 @@ terraform {
       version = "~> 2.56.0"
     }
     null = {
-      source = "hashicorp/null"
+      source  = "hashicorp/null"
       version = "~> 3.1.0"
     }
     random = {
-      source = "hashicorp/random"
+      source  = "hashicorp/random"
       version = "~> 3.1.0"
     }
   }
@@ -63,30 +63,14 @@ locals {
   hub_vnet_rg_name    = local.splitted_hub_vnet[4]
   hub_vnet_name       = local.splitted_hub_vnet[8]
 
-  diag_vnet_logs = [
-    "VMProtectionAlerts",
-  ]
-  diag_vnet_metrics = [
-    "AllMetrics",
-  ]
-  diag_nsg_logs = [
-    "NetworkSecurityGroupEvent",
-    "NetworkSecurityGroupRuleCounter",
-  ]
-
-  diag_all_logs = setunion(
-    local.diag_vnet_logs,
-  local.diag_nsg_logs)
-  diag_all_metrics = setunion(
-  local.diag_vnet_metrics)
 
   diag_resource_list = var.diagnostics != null ? split("/", var.diagnostics.destination) : []
   parsed_diag = var.diagnostics != null ? {
     log_analytics_id   = contains(local.diag_resource_list, "Microsoft.OperationalInsights") ? var.diagnostics.destination : null
     storage_account_id = contains(local.diag_resource_list, "Microsoft.Storage") ? var.diagnostics.destination : null
     event_hub_auth_id  = contains(local.diag_resource_list, "Microsoft.EventHub") ? var.diagnostics.destination : null
-    metric             = contains(var.diagnostics.metrics, "all") ? local.diag_all_metrics : var.diagnostics.metrics
-    log                = contains(var.diagnostics.logs, "all") ? local.diag_all_logs : var.diagnostics.logs
+    metric             = var.diagnostics.metrics
+    log                = var.diagnostics.logs
     } : {
     log_analytics_id   = null
     storage_account_id = null
@@ -139,33 +123,47 @@ resource "azurerm_virtual_network" "vnet" {
   tags = var.tags
 }
 
+data "azurerm_monitor_diagnostic_categories" "vnet" {
+  resource_id = azurerm_virtual_network.vnet.id
+}
+
 resource "azurerm_monitor_diagnostic_setting" "vnet" {
   count                          = var.diagnostics != null ? 1 : 0
-  name                           = "vnet-diag"
+  name                           = "${var.name}-vnet-diag"
   target_resource_id             = azurerm_virtual_network.vnet.id
   log_analytics_workspace_id     = local.parsed_diag.log_analytics_id
   eventhub_authorization_rule_id = local.parsed_diag.event_hub_auth_id
   eventhub_name                  = local.parsed_diag.event_hub_auth_id != null ? var.diagnostics.eventhub_name : null
   storage_account_id             = local.parsed_diag.storage_account_id
 
+  # For each available log category, check if it should be enabled and set enabled = true if it should.
+  # All other categories are created with enabled = false to prevent TF from showing changes happening with each plan/apply.
+  # Ref: https://github.com/terraform-providers/terraform-provider-azurerm/issues/7235
   dynamic "log" {
-    for_each = setintersection(local.parsed_diag.log, local.diag_vnet_logs)
+    for_each = data.azurerm_monitor_diagnostic_categories.vnet.logs
     content {
       category = log.value
+      enabled  = contains(local.parsed_diag.log, "all") || contains(local.parsed_diag.log, log.value)
 
       retention_policy {
         enabled = false
+        days    = 0
       }
     }
   }
 
+  # For each available metric category, check if it should be enabled and set enabled = true if it should.
+  # All other categories are created with enabled = false to prevent TF from showing changes happening with each plan/apply.
+  # Ref: https://github.com/terraform-providers/terraform-provider-azurerm/issues/7235
   dynamic "metric" {
-    for_each = setintersection(local.parsed_diag.metric, local.diag_vnet_metrics)
+    for_each = data.azurerm_monitor_diagnostic_categories.vnet.metrics
     content {
       category = metric.value
+      enabled  = contains(local.parsed_diag.metric, "all") || contains(local.parsed_diag.metric, metric.value)
 
       retention_policy {
         enabled = false
+        days    = 0
       }
     }
   }
@@ -302,6 +300,12 @@ resource "azurerm_network_security_rule" "vnet" {
   destination_application_security_group_ids = each.value.rule.destination_application_security_group_ids
 }
 
+data "azurerm_monitor_diagnostic_categories" "nsg" {
+  for_each = local.subnets_map
+
+  resource_id = azurerm_network_security_group.vnet[each.key].id
+}
+
 resource "azurerm_monitor_diagnostic_setting" "nsg" {
   for_each = local.subnets_map
 
@@ -313,12 +317,30 @@ resource "azurerm_monitor_diagnostic_setting" "nsg" {
   storage_account_id             = local.parsed_diag.storage_account_id
 
   dynamic "log" {
-    for_each = setintersection(local.parsed_diag.log, local.diag_nsg_logs)
+    for_each = data.azurerm_monitor_diagnostic_categories.nsg[each.key].logs
     content {
       category = log.value
+      enabled  = contains(local.parsed_diag.log, "all") || contains(local.parsed_diag.log, log.value)
 
       retention_policy {
         enabled = false
+        days    = 0
+      }
+    }
+  }
+
+  # For each available metric category, check if it should be enabled and set enabled = true if it should.
+  # All other categories are created with enabled = false to prevent TF from showing changes happening with each plan/apply.
+  # Ref: https://github.com/terraform-providers/terraform-provider-azurerm/issues/7235
+  dynamic "metric" {
+    for_each = data.azurerm_monitor_diagnostic_categories.nsg[each.key].metrics
+    content {
+      category = metric.value
+      enabled  = contains(local.parsed_diag.metric, "all") || contains(local.parsed_diag.metric, metric.value)
+
+      retention_policy {
+        enabled = false
+        days    = 0
       }
     }
   }

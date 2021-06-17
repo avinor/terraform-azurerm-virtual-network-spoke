@@ -31,4 +31,11 @@ module "spoke" {
       disable_firewall_route = true
     },
   ]
+
+  diagnostics = {
+    destination   = "test"
+    eventhub_name = "diagnostics",
+    logs          = ["VMProtectionAlerts", "NetworkSecurityGroupEvent", "NetworkSecurityGroupRuleCounter"],
+    metrics       = ["AllMetrics"],
+  }
 }
