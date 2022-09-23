@@ -55,7 +55,7 @@ locals {
   ])
   nsg_rules_map = { for rule in local.flatten_nsg_rules : "${rule.subnet}.${rule.priority}" => rule }
 
-  subnets_with_routes = { for subnet in var.subnets : subnet.name => subnet if ! coalesce(subnet.disable_firewall_route, false) }
+  subnets_with_routes = { for subnet in var.subnets : subnet.name => subnet if !coalesce(subnet.disable_firewall_route, false) }
   subnets_map         = { for subnet in var.subnets : subnet.name => subnet }
 
   splitted_hub_vnet   = split("/", var.hub_virtual_network_id)
@@ -255,6 +255,7 @@ resource "azurerm_network_security_group" "vnet" {
 resource "azurerm_network_watcher_flow_log" "vnet_logs" {
   for_each = var.netwatcher != null ? local.subnets_map : {}
 
+
   network_watcher_name = azurerm_network_watcher.netwatcher[0].name
   resource_group_name  = azurerm_resource_group.netwatcher[0].name
 
@@ -307,7 +308,7 @@ data "azurerm_monitor_diagnostic_categories" "nsg" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "nsg" {
-  for_each = local.subnets_map
+  for_each = var.diagnostics != null ? local.subnets_map : {}
 
   name                           = "${each.key}-diag"
   target_resource_id             = azurerm_network_security_group.vnet[each.key].id
