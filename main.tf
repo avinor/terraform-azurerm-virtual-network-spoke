@@ -3,15 +3,15 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 2.56.0"
+      version = "~> 3.23.0"
     }
     null = {
       source  = "hashicorp/null"
-      version = "~> 3.1.0"
+      version = "~> 3.1.1"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.1.0"
+      version = "~> 3.4.3"
     }
   }
 }
@@ -192,7 +192,7 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "3.0.1"
+  version = "3.5.1"
 
   name                = var.name
   resource_group_name = azurerm_resource_group.vnet.name
@@ -255,9 +255,9 @@ resource "azurerm_network_security_group" "vnet" {
 resource "azurerm_network_watcher_flow_log" "vnet_logs" {
   for_each = var.netwatcher != null ? local.subnets_map : {}
 
-
   network_watcher_name = azurerm_network_watcher.netwatcher[0].name
   resource_group_name  = azurerm_resource_group.netwatcher[0].name
+  name                 = "${each.key}-log"
 
   network_security_group_id = azurerm_network_security_group.vnet[each.key].id
   storage_account_id        = module.storage.id
