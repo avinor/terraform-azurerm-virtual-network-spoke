@@ -194,9 +194,10 @@ module "storage" {
   source  = "avinor/storage-account/azurerm"
   version = "3.5.1"
 
-  name                = var.name
-  resource_group_name = azurerm_resource_group.vnet.name
-  location            = azurerm_resource_group.vnet.location
+  name                  = var.name
+  resource_group_name   = azurerm_resource_group.vnet.name
+  resource_group_create = false
+  location              = azurerm_resource_group.vnet.location
 
   enable_advanced_threat_protection = var.enable_advanced_threat_protection
 
