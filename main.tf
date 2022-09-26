@@ -140,7 +140,7 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
   # All other categories are created with enabled = false to prevent TF from showing changes happening with each plan/apply.
   # Ref: https://github.com/terraform-providers/terraform-provider-azurerm/issues/7235
   dynamic "log" {
-    for_each = data.azurerm_monitor_diagnostic_categories.vnet.logs
+    for_each = data.azurerm_monitor_diagnostic_categories.vnet.log_category_types
     content {
       category = log.value
       enabled  = contains(local.parsed_diag.log, "all") || contains(local.parsed_diag.log, log.value)
@@ -192,7 +192,7 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "3.5.1"
+  version = "3.5.2"
 
   name                  = var.name
   resource_group_name   = azurerm_resource_group.vnet.name
