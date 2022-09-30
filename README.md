@@ -14,18 +14,19 @@ firewall so all traffic is logged.
 
 ## Limitations
 
-Currently spoke subnets do not support delegation as not all delegation resources support UDR, for instance containers.
-Since all subnets have an UDR for routing traffic through the firewall in hub this is a requirement for spoke.
+Currently, spoke subnets do not support delegation as not all delegation resources support UDR, for instance containers.
+Since all subnets have a UDR for routing traffic through the firewall in hub this is a requirement for spoke.
 
 It is not an option to turn off UDR as that allows any subnet to create public ips and have full access out.
 
-## Important breaking change when upgrading to v4.0.0
+## NB! Important breaking change when upgrading to v4.0.0
 
 Module versions less than v4.0.0 contains a bug that might have created terraform state that have two addresses pointing
-to the same azure resource group. This is fixed in v4.0.0 and above, but upgrading to v4.0.0 can result in delete the
-entire resource group for the spoke. Look carefully on the terraform plan before applying. To handle this terraform
-state kan be manually change, but there is introduced a variable that can be used for the case ( and only this case).
-The variable `storage_account_resource_group_create` can be set to true for preventing the resource group to be deleted.
+to the same azure resource group. This is fixed in v4.0.0 and above, but upgrading to v4.0.0 can result in the entire
+resource group for the spoke being deleted. _Carefully_ inspect the terraform plan before applying. As a workaround
+the terraform state can be manually changed. Alternatively the variable `storage_account_resource_group_create` can be
+set to true, this will prevent the resource group from being deleted. This new variable is introduced specifically for
+this case, and has no other usages.
 
 The conflicting addresses in terraform state is:
 
