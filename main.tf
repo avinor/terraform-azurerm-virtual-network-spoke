@@ -258,7 +258,7 @@ resource "azurerm_network_watcher_flow_log" "vnet_logs" {
 
   network_watcher_name = azurerm_network_watcher.netwatcher[0].name
   resource_group_name  = azurerm_resource_group.netwatcher[0].name
-  name                 = "Microsoft.Network${azurerm_resource_group.vnet.name}${each.key}-nsg"
+  name                 = "${azurerm_resource_group.vnet.name}${each.key}-nsg"
 
   network_security_group_id = azurerm_network_security_group.vnet[each.key].id
   storage_account_id        = module.storage.id
