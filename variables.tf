@@ -77,7 +77,7 @@ variable "netwatcher" {
 }
 
 variable "storage_account_resource_group_create" {
-  description = "Property for supporting terraform state created by older version of this module. NEVER set set this to true for new installations!"
+  description = "Property for supporting terraform state created by older version of this module. NEVER set this to true for new spokes!"
   type        = bool
   default     = false
 }
