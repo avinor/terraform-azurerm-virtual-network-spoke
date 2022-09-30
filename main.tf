@@ -276,6 +276,8 @@ resource "azurerm_network_watcher_flow_log" "vnet_logs" {
     days    = 0
     enabled = false
   }
+
+  tags = var.tags
 }
 
 resource "azurerm_network_security_rule" "vnet" {
