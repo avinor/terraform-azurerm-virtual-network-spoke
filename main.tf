@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 0.13"
+  required_version = ">= 1.3"
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -182,6 +182,17 @@ resource "azurerm_subnet" "vnet" {
   address_prefixes     = [each.value.address_prefix]
 
   service_endpoints = each.value.service_endpoints
+
+  dynamic "delegation" {
+    for_each = { for d in each.value.delegations : d.name => d }
+    content {
+      name = delegation.value.name
+      service_delegation {
+        name    = delegation.value.service_delegation.name
+        actions = delegation.value.service_delegation.actions
+      }
+    }
+  }
 
   # TODO Add support for delegation. Some delegation doesn't support UDR
 }

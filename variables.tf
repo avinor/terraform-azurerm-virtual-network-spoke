@@ -48,6 +48,13 @@ variable "subnets" {
     service_endpoints      = list(string)
     security_rules         = list(any)
     disable_firewall_route = bool
+    delegations = optional(list(object({
+      name = string
+      service_delegation = object({
+        name    = string
+        actions = list(string)
+      })
+    })), [])
   }))
 }
 
