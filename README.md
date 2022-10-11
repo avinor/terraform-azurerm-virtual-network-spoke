@@ -54,10 +54,8 @@ module "spoke" {
 
   subnets = [
     {
-      name              = "subnet"
-      address_prefix    = "10.0.0.0/24"
-      service_endpoints = []
-      security_rules    = []
+      name           = "subnet"
+      address_prefix = "10.0.0.0/24"
     },
   ]
 }

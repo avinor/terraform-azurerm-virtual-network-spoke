@@ -45,8 +45,8 @@ variable "subnets" {
   type = list(object({
     name                   = string
     address_prefix         = string
-    service_endpoints      = list(string)
-    security_rules         = list(any)
+    service_endpoints      = optional(list(string), [])
+    security_rules         = optional(list(any), [])
     disable_firewall_route = bool
     delegations = optional(list(object({
       name = string
@@ -54,7 +54,7 @@ variable "subnets" {
         name    = string
         actions = list(string)
       })
-    })), [])
+    })))
   }))
 }
 

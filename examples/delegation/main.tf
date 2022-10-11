@@ -13,8 +13,6 @@ module "spoke" {
     {
       name                   = "subnet"
       address_prefix         = "10.0.0.0/24"
-      service_endpoints      = []
-      security_rules         = []
       disable_firewall_route = false
       delegations = [
         {
