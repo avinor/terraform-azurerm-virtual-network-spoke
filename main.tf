@@ -5,10 +5,6 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.23.0"
     }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.1.1"
-    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.4.3"
@@ -193,8 +189,6 @@ resource "azurerm_subnet" "vnet" {
       }
     }
   }
-
-  # TODO Add support for delegation. Some delegation doesn't support UDR
 }
 
 #
