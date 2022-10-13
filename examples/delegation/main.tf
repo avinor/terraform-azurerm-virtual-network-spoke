@@ -1,4 +1,5 @@
 module "spoke" {
+
   source = "../../"
 
   name                   = "spoke"
@@ -13,16 +14,17 @@ module "spoke" {
       name                   = "subnet"
       address_prefix         = "10.0.0.0/24"
       disable_firewall_route = false
-    },
-    {
-      name                   = "subnet_null"
-      address_prefix         = "10.0.1.0/24"
-      disable_firewall_route = null
-    },
-    {
-      name                   = "nofirewall"
-      address_prefix         = "10.0.2.0/24"
-      disable_firewall_route = true
+      delegations = [
+        {
+          name = "fs"
+          service_delegation = {
+            name = "Microsoft.DBforPostgreSQL/flexibleServers"
+            actions = [
+              "Microsoft.Network/virtualNetworks/subnets/join/action",
+            ]
+          }
+        },
+      ]
     },
   ]
 }

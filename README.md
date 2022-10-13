@@ -54,10 +54,8 @@ module "spoke" {
 
   subnets = [
     {
-      name              = "subnet"
-      address_prefix    = "10.0.0.0/24"
-      service_endpoints = []
-      security_rules    = []
+      name           = "subnet"
+      address_prefix = "10.0.0.0/24"
     },
   ]
 }
@@ -78,7 +76,7 @@ Contributor role on workspace, or a custom role allowing it to connect resources
 Diagnostics settings can be sent to either storage account, event hub or Log Analytics workspace. The
 variable `diagnostics.destination` is the id of receiver, ie. storage account id, event namespace authorization rule id
 or log analytics resource id. Depending on what id is it will detect where to send. Unless using event namespace
-the `eventhub_name` is not required, just set to `null` for storage account and log analytics workspace.
+the `eventhub_name` is not required.
 
 Setting `all` in logs and metrics will send all possible diagnostics to destination. If not using `all` type name of
 categories to send.

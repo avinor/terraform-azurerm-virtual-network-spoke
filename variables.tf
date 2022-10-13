@@ -25,7 +25,7 @@ variable "diagnostics" {
   description = "Diagnostic settings for those resources that support it. See README.md for details on configuration."
   type = object({
     destination   = string
-    eventhub_name = string
+    eventhub_name = optional(string)
     logs          = list(string)
     metrics       = list(string)
   })
@@ -45,9 +45,16 @@ variable "subnets" {
   type = list(object({
     name                   = string
     address_prefix         = string
-    service_endpoints      = list(string)
-    security_rules         = list(any)
+    service_endpoints      = optional(list(string), [])
+    security_rules         = optional(list(any), [])
     disable_firewall_route = bool
+    delegations = optional(list(object({
+      name = string
+      service_delegation = object({
+        name    = string
+        actions = list(string)
+      })
+    })), [])
   }))
 }
 
