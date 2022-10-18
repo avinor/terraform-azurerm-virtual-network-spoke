@@ -363,7 +363,7 @@ resource "azurerm_subnet_network_security_group_association" "vnet" {
 }
 
 #
-# Private DNS link
+# Private DNS links
 #
 
 resource "azurerm_private_dns_zone_virtual_network_link" "main" {
@@ -371,11 +371,22 @@ resource "azurerm_private_dns_zone_virtual_network_link" "main" {
   count                 = var.private_dns_link != null ? 1 : 0
   name                  = "${var.name}-link-${random_string.hub.result}"
   resource_group_name   = var.private_dns_link.resource_group_name
-  private_dns_zone_name = var.private_dns_link.zone_name
   virtual_network_id    = azurerm_virtual_network.vnet.id
+  private_dns_zone_name = var.private_dns_link.zone_name
+  tags                  = var.tags
   registration_enabled  = true
+}
 
-  tags = var.tags
+resource "azurerm_private_dns_zone_virtual_network_link" "resolvable" {
+  for_each = var.resolvable_dns_links
+
+  provider              = azurerm.hub
+  name                  = "${var.name}-link-${random_string.hub.result}"
+  virtual_network_id    = azurerm_virtual_network.vnet.id
+  resource_group_name   = each.value.resource_group_name
+  private_dns_zone_name = each.value.zone_name
+  tags                  = var.tags
+  registration_enabled  = false
 }
 
 #
