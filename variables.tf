@@ -75,11 +75,8 @@ variable "private_dns_link" {
 
 variable "resolvable_dns_links" {
   description = "Private dns links with auto-registration disabled"
-  type = list(object({
-    resource_group_name = string
-    zone_name           = string
-  }))
-  default = []
+  type        = list(string)
+  default     = []
 }
 
 variable "netwatcher" {
