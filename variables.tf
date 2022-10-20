@@ -65,12 +65,21 @@ variable "use_remote_gateway" {
 }
 
 variable "private_dns_link" {
-  description = "Private dns link for spoke network."
+  description = "Private dns link with auto-registration enabled"
   type = object({
     resource_group_name = string
     zone_name           = string
   })
   default = null
+}
+
+variable "resolvable_dns_links" {
+  description = "Private dns links with auto-registration disabled"
+  type = list(object({
+    resource_group_name = string
+    zone_name           = string
+  }))
+  default = []
 }
 
 variable "netwatcher" {
