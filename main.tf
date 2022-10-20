@@ -377,13 +377,13 @@ resource "azurerm_private_dns_zone_virtual_network_link" "main" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "resolvable" {
-  for_each = { for r in var.resolvable_dns_links : r => true }
+  for_each = { for r in var.resolvable_dns_links : r.zone_name => r }
 
   provider              = azurerm.hub
   name                  = "${var.name}-link-${random_string.hub.result}"
   virtual_network_id    = azurerm_virtual_network.vnet.id
-  resource_group_name   = local.hub_vnet_rg_name
-  private_dns_zone_name = each.key
+  resource_group_name   = each.value.resource_group_name
+  private_dns_zone_name = each.value.zone_name
   tags                  = var.tags
   registration_enabled  = false
 }

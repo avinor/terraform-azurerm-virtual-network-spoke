@@ -14,8 +14,14 @@ module "spoke" {
   }
 
   resolvable_dns_links = [
-    "database.example.company.com",
-    "api.example.company.com",
+    {
+      resource_group_name = "networking-spoke-rg"
+      zone_name           = "database.example.company.com"
+    },
+    {
+      resource_group_name = "networking-spoke-rg"
+      zone_name           = "api.example.company.com"
+    },
   ]
 
   subnets = [
