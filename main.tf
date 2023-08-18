@@ -3,7 +3,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.23.0"
+      version = "~> 3.69.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -196,7 +196,7 @@ resource "azurerm_subnet" "vnet" {
 
 module "storage" {
   source  = "avinor/storage-account/azurerm"
-  version = "3.5.2"
+  version = "3.5.3"
 
   name                  = var.name
   resource_group_name   = azurerm_resource_group.vnet.name
