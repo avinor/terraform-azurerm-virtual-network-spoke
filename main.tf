@@ -144,7 +144,6 @@ resource "azurerm_monitor_diagnostic_setting" "vnet" {
     }
   }
 
-
   # For each available metric category, check if it should be enabled and set enabled = true if it should.
   # All other categories are created with enabled = false to prevent TF from showing changes happening with each plan/apply.
   # Ref: https://github.com/terraform-providers/terraform-provider-azurerm/issues/7235
